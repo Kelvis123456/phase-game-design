@@ -21,8 +21,8 @@ Este repositorio es un **documento de pre-producción completo**, no un juego te
 | 7 — Selección de tecnología | Unity 2022 LTS, FMOD, stack completo | ✅ |
 | 8 — Arquitectura técnica | Patrones, sistemas, 16 secciones de diseño | ✅ |
 | 9 — Vertical Slice | Plan + **prototipo real en C#** | ✅ |
-| 10 — Desarrollo completo | — | Pendiente |
-| 11 — QA | — | Pendiente |
+| 10 — Desarrollo completo | 5 milestones de producción — ecos a 5 slots, 50 salas en 3 zonas, 3 bosses, meta-progresión, monetización | ✅ |
+| 11 — QA y Lanzamiento | QA interno, beta, store listings, live monitoring, roadmap post-lanzamiento | ✅ |
 
 ## Prototipo técnico real
 
@@ -47,6 +47,8 @@ fase6-arte/              Dirección de arte y paletas
 fase7-tecnologia/        Stack técnico seleccionado
 fase8-arquitectura/      Arquitectura de sistemas
 fase9-vertical-slice/    Plan de vertical slice + prototipo C# real
+fase10-desarrollo/       Plan de producción completa: 5 milestones, checklist de arte, deuda técnica
+fase11-qa-lanzamiento/   QA interno, beta abierta, store listings, live monitoring, roadmap post-lanzamiento
 ```
 
 ## Stack técnico
