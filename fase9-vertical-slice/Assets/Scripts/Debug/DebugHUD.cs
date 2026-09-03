@@ -34,6 +34,15 @@ public class DebugHUD : MonoBehaviour
             run1.StartRun();
             _lastAction = $"F4: StartRun() -> state={run1.CurrentState}";
         }
+        if (Input.GetKeyDown(KeyCode.F5) && Services.TryGet<UpgradeSelectorUI>(out var selector) && RunManager.UpgradeTable.Count >= 2)
+        {
+            selector.Show(RunManager.UpgradeTable[0], RunManager.UpgradeTable[1], picked =>
+            {
+                if (picked != null && Services.TryGet<RunManager>(out var runRef)) runRef.ApplyUpgrade(picked);
+                _lastAction = $"F5 resolved: picked={(picked != null ? picked.id : "none")}";
+            });
+            _lastAction = "F5: showing upgrade selector (forced, bypassing 60% roll)";
+        }
     }
 
     private void OnGUI()
@@ -63,7 +72,11 @@ public class DebugHUD : MonoBehaviour
         string echoActiveText = Services.TryGet<EchoManager>(out var em) ? em.ActiveCount.ToString() : "NULL";
         string roomText = Services.TryGet<RoomAssembler>(out var asm) && asm.CurrentRoom != null ? asm.CurrentRoom.roomId : "(none)";
 
-        GUI.Box(new Rect(5, 5, 700, 320), "");
+        string upgradesText = Services.TryGet<RunManager>(out var runU)
+            ? $"pcBonus={runU.ActiveUpgrades.pcBonusOnComplete} btBonus={runU.ActiveUpgrades.bulletTimeDeactivateBonus:F2} worldSlow={runU.ActiveUpgrades.worldSlowMultiplier:F2}"
+            : "NULL";
+
+        GUI.Box(new Rect(5, 5, 700, 344), "");
         GUI.Label(new Rect(15, 10, 680, 24), $"frame={_frameCount} t={Time.time:F2} dt={Time.deltaTime:F4}", style);
         GUI.Label(new Rect(15, 34, 680, 24), $"player.pos={posText}", style);
         GUI.Label(new Rect(15, 58, 680, 24), $"rb.pos={rbText}", style);
@@ -76,5 +89,6 @@ public class DebugHUD : MonoBehaviour
         GUI.Label(new Rect(15, 226, 680, 24), $"PhaseCrystals={crystalsText}  A2unlocked={a2Text}  echoActive={echoActiveText}", style);
         GUI.Label(new Rect(15, 250, 680, 24), $"RunState={runStateText}  Room={roomText}", style);
         GUI.Label(new Rect(15, 274, 680, 24), $"[F2 earn][F3 unlock A2][F4 start run] last: {_lastAction}", style);
+        GUI.Label(new Rect(15, 298, 680, 24), $"ActiveUpgrades: {upgradesText}", style);
     }
 }

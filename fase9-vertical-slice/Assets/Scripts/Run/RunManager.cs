@@ -19,6 +19,16 @@ public class RunManager : MonoBehaviour
     private SaveSystem _save;
     private ProgressionSystem _progression;
 
+    // Fase 10 M3.3: upgrades de run (GDD §7.3) — muestra reducida de la tabla R01-R12,
+    // suficiente para probar el patrón real de "elegir 1 de 2 entre salas".
+    public RunUpgradeEffects ActiveUpgrades { get; private set; } = new RunUpgradeEffects();
+    public static readonly System.Collections.Generic.List<RunUpgrade> UpgradeTable = new System.Collections.Generic.List<RunUpgrade>
+    {
+        new RunUpgrade("R12", "PC Bonus", "+100 Phase Crystals al completar la run", e => e.pcBonusOnComplete += 100),
+        new RunUpgrade("R03", "Bullet Extendido", "Transición de bullet-time más suave (QoL, no poder)", e => e.bulletTimeDeactivateBonus += 0.1f),
+        new RunUpgrade("R11", "Mundo Lento", "El mundo corre a 0.85x — facilita el timing sin afectar ecos", e => e.worldSlowMultiplier = 0.85f),
+    };
+
     private void Awake() => Services.Register(this);
 
     private void Start()
@@ -35,6 +45,7 @@ public class RunManager : MonoBehaviour
         _echosCreated = 0;
         _save.Current.metaProgression.totalRunsAttempted++;
         _save.Save();
+        ActiveUpgrades = new RunUpgradeEffects();
         TransitionTo(RunState.RoomTransition);
         TransitionTo(RunState.RoomActive);
 
@@ -76,10 +87,16 @@ public class RunManager : MonoBehaviour
         _save.Save();
 
         if (_progression != null)
+        {
             _progression.EarnCrystals(ProgressionSystem.EarnSource.RunZone1);
+            if (ActiveUpgrades.pcBonusOnComplete > 0)
+                _progression.EarnFlat(ActiveUpgrades.pcBonusOnComplete);
+        }
 
         TransitionTo(RunState.Idle);
     }
+
+    public void ApplyUpgrade(RunUpgrade upgrade) => upgrade?.apply?.Invoke(ActiveUpgrades);
 
     public void FailRun()
     {
