@@ -382,6 +382,13 @@ public static class VSSceneBuilder
         BuildTraversalRoom(assembler, "Z1_TIMING_02", xOffset: 450f, length: 22f, hasGap: true, gapStart: 6f, gapWidth: 4f);
         BuildTraversalRoom(assembler, "Z1_TIMING_03", xOffset: 500f, length: 24f, hasGap: true, gapStart: 12f, gapWidth: 3f);
         BuildTraversalRoom(assembler, "Z1_SOLO_04", xOffset: 550f, length: 14f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+
+        // ---- Segundo lote: más SYNC (variedad de layout de palanca/puerta) + más traversal ----
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_03", xOffset: 600f, leverX: 6f, doorX: 16f, exitX: 19f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_04", xOffset: 700f, leverX: 3f, doorX: 9f, exitX: 12f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_05", xOffset: 800f, length: 18f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_04", xOffset: 850f, length: 20f, hasGap: true, gapStart: 9f, gapWidth: 3.5f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_05", xOffset: 900f, length: 26f, hasGap: true, gapStart: 14f, gapWidth: 4f);
     }
 
     // Sala de traversal simple: piso plano, opcionalmente con un foso que exige saltar

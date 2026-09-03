@@ -46,11 +46,14 @@ public class RoomAssembler : MonoBehaviour
         var soloRooms = _pool.FindAll(r => r.data.mechanic == PrimaryMechanic.SOLO);
         var nonSolo = _pool.FindAll(r => r.data.mechanic != PrimaryMechanic.SOLO);
 
-        if (soloRooms.Count > 0)
-            _runSequence.Add(soloRooms[rng.Next(soloRooms.Count)]);
+        RoomInstance firstRoom = soloRooms.Count > 0 ? soloRooms[rng.Next(soloRooms.Count)] : null;
+        if (firstRoom != null) _runSequence.Add(firstRoom);
 
         PrimaryMechanic lastMechanic = _runSequence.Count > 0 ? _runSequence[0].data.mechanic : PrimaryMechanic.SOLO;
+        // Defensivo: excluir tanto la sala 1 (nunca repetir la MISMA sala en un run) como
+        // cualquier otra sala SOLO — solo la sala de apertura usa ese pool.
         var remaining = new List<RoomInstance>(nonSolo);
+        remaining.RemoveAll(r => r == firstRoom);
         while (_runSequence.Count < roomCount && remaining.Count > 0)
         {
             var candidates = remaining.FindAll(r => r.data.mechanic != lastMechanic);
