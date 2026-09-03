@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using UnityEngine;
 
 // Reproduce un recording en bucle infinito.
@@ -76,12 +78,25 @@ public class EchoPlayer : MonoBehaviour
         }
     }
 
+    // Fase 10 M1.1: pool de 10 EchoPlayer pre-instanciados (5 activos + 5 en reserva) en vez
+    // de Instantiate/Destroy por eco — evita spikes de GC en cada shift de slot. Die() ya no
+    // destruye el GameObject: se desvanece y vuelve al pool inactivo, listo para reusarse.
+    public event Action<EchoPlayer> OnRecycled;
+
     public void Die()
     {
         if (Services.TryGet<VFXPool>(out var vfx))
             vfx.Play("EchoDissolve", transform.position, _mat.GetColor(ShaderColor));
 
-        Destroy(gameObject, 0.4f);
+        _recording = null;
+        StartCoroutine(RecycleAfterFade(0.4f));
+    }
+
+    private IEnumerator RecycleAfterFade(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        gameObject.SetActive(false);
+        OnRecycled?.Invoke(this);
     }
 
     public void UpdateSlot(int newSlot)
