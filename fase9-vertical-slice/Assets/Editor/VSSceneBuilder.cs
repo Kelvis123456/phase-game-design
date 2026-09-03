@@ -211,6 +211,16 @@ public static class VSSceneBuilder
         SetPrivate(bootstrap, "inputReader", inputReader);
         SetPrivate(bootstrap, "vfxPool", vfxPool);
 
+        // ---- Fase 10 M1: producción — save, progresión, run FSM ----
+        var saveGO = new GameObject("SaveSystem");
+        saveGO.AddComponent<SaveSystem>();
+
+        var progressionGO = new GameObject("ProgressionSystem");
+        progressionGO.AddComponent<ProgressionSystem>();
+
+        var runManagerGO = new GameObject("RunManager");
+        runManagerGO.AddComponent<RunManager>();
+
         // ---- Player ----
         var spawnGO = new GameObject("PlayerSpawnPoint");
         spawnGO.transform.position = new Vector3(1f, 2f, 0f); // floor top surface is at y=1; clear headroom for the capsule collider
