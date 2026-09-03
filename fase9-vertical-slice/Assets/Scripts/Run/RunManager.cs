@@ -37,6 +37,9 @@ public class RunManager : MonoBehaviour
         _save.Save();
         TransitionTo(RunState.RoomTransition);
         TransitionTo(RunState.RoomActive);
+
+        if (Services.TryGet<RoomAssembler>(out var assembler))
+            assembler.AssembleRun(roomCount: 4, seed: UnityEngine.Random.Range(100000, 999999));
     }
 
     public void RoomCleared()
