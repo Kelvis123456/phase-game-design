@@ -398,6 +398,39 @@ public static class VSSceneBuilder
         BuildTraversalRoom(assembler, "Z1_TIMING_06", xOffset: 1150f, length: 16f, hasGap: true, gapStart: 7f, gapWidth: 3f);
         BuildTraversalRoom(assembler, "Z1_TIMING_07", xOffset: 1200f, length: 28f, hasGap: true, gapStart: 16f, gapWidth: 4.5f);
         BuildTraversalRoom(assembler, "Z1_SOLO_08", xOffset: 1250f, length: 15f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+
+        // ---- Lote final: llega a 50 salas reales del pool ----
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_07", xOffset: 1300f, leverX: 4f, doorX: 10f, exitX: 13f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_08", xOffset: 1350f, leverX: 8f, doorX: 18f, exitX: 21f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_09", xOffset: 1400f, leverX: 5f, doorX: 12f, exitX: 15f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_10", xOffset: 1450f, leverX: 6f, doorX: 15f, exitX: 18f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_11", xOffset: 1500f, leverX: 3f, doorX: 8f, exitX: 11f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_12", xOffset: 1550f, leverX: 9f, doorX: 19f, exitX: 22f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_13", xOffset: 1600f, leverX: 4f, doorX: 11f, exitX: 14f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_14", xOffset: 1650f, leverX: 7f, doorX: 16f, exitX: 19f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_15", xOffset: 1700f, leverX: 5f, doorX: 13f, exitX: 16f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_16", xOffset: 1750f, leverX: 6f, doorX: 14f, exitX: 17f);
+
+        BuildTraversalRoom(assembler, "Z1_SOLO_09", xOffset: 1800f, length: 13f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_10", xOffset: 1850f, length: 17f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_11", xOffset: 1900f, length: 21f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_12", xOffset: 1950f, length: 19f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_13", xOffset: 2000f, length: 16f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_14", xOffset: 2050f, length: 22f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_15", xOffset: 2100f, length: 14f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_16", xOffset: 2150f, length: 18f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_17", xOffset: 2200f, length: 20f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_18", xOffset: 2250f, length: 15f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+
+        BuildTraversalRoom(assembler, "Z1_TIMING_08", xOffset: 2300f, length: 18f, hasGap: true, gapStart: 8f, gapWidth: 3f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_09", xOffset: 2350f, length: 22f, hasGap: true, gapStart: 10f, gapWidth: 3.5f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_10", xOffset: 2400f, length: 20f, hasGap: true, gapStart: 9f, gapWidth: 4f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_11", xOffset: 2450f, length: 24f, hasGap: true, gapStart: 13f, gapWidth: 3f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_12", xOffset: 2500f, length: 26f, hasGap: true, gapStart: 15f, gapWidth: 4.5f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_13", xOffset: 2550f, length: 19f, hasGap: true, gapStart: 8f, gapWidth: 3f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_14", xOffset: 2600f, length: 23f, hasGap: true, gapStart: 12f, gapWidth: 3.5f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_15", xOffset: 2650f, length: 21f, hasGap: true, gapStart: 10f, gapWidth: 4f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_16", xOffset: 2700f, length: 25f, hasGap: true, gapStart: 14f, gapWidth: 3f);
     }
 
     // Sala de traversal simple: piso plano, opcionalmente con un foso que exige saltar
