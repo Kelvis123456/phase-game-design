@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38783773e4832c94699b6ded0439f2a1, type: 3}
+  m_Name: Z1_SOLO_08
+  m_EditorClassIdentifier: Assembly-CSharp::RoomData
+  roomId: Z1_SOLO_08
+  zoneId: 1
+  difficultyTier: 1
+  mechanic: 4
+  ecoCountRequired: 0
+  estimatedDurationS: 0
+  hasAltSolution: 1
+  introRunMin: 1
+  weightBase: 1
+  entrada: 3
+  salida: 2
+  sceneName: 

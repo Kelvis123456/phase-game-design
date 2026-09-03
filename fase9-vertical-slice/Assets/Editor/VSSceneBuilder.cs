@@ -389,6 +389,15 @@ public static class VSSceneBuilder
         BuildTraversalRoom(assembler, "Z1_SOLO_05", xOffset: 800f, length: 18f, hasGap: false, gapStart: 0f, gapWidth: 0f);
         BuildTraversalRoom(assembler, "Z1_TIMING_04", xOffset: 850f, length: 20f, hasGap: true, gapStart: 9f, gapWidth: 3.5f);
         BuildTraversalRoom(assembler, "Z1_TIMING_05", xOffset: 900f, length: 26f, hasGap: true, gapStart: 14f, gapWidth: 4f);
+
+        // ---- Tercer lote ----
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_05", xOffset: 950f, leverX: 5f, doorX: 13f, exitX: 16f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_06", xOffset: 1000f, leverX: 7f, doorX: 17f, exitX: 20f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_06", xOffset: 1050f, length: 12f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_07", xOffset: 1100f, length: 24f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_06", xOffset: 1150f, length: 16f, hasGap: true, gapStart: 7f, gapWidth: 3f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_07", xOffset: 1200f, length: 28f, hasGap: true, gapStart: 16f, gapWidth: 4.5f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_08", xOffset: 1250f, length: 15f, hasGap: false, gapStart: 0f, gapWidth: 0f);
     }
 
     // Sala de traversal simple: piso plano, opcionalmente con un foso que exige saltar
