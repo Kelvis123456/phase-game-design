@@ -7,6 +7,7 @@ using UnityEngine.Tilemaps;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 // Editor-only scene assembly for the PHASE vertical slice.
 // Builds the whole test room + wiring programmatically (Sprints 1-4 of vertical-slice.md)
@@ -295,6 +296,15 @@ public static class VSSceneBuilder
         flashRt.anchorMax = Vector2.one;
         flashRt.offsetMin = Vector2.zero;
         flashRt.offsetMax = Vector2.zero;
+
+        // ---- Fase 10 M3.1: EventSystem (requerido para que los Button de UI respondan a
+        // clicks) + la UI real del árbol de progresión (Tab para abrir/cerrar) ----
+        var eventSystemGO = new GameObject("EventSystem");
+        eventSystemGO.AddComponent<EventSystem>();
+        eventSystemGO.AddComponent<StandaloneInputModule>();
+
+        var progressionUIGO = new GameObject("ProgressionTreeUI");
+        progressionUIGO.AddComponent<ProgressionTreeUI>();
 
         var roomControllerGO = new GameObject("VSRoomController");
         var roomController = roomControllerGO.AddComponent<VSRoomController>();
