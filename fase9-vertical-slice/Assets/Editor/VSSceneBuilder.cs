@@ -304,6 +304,9 @@ public static class VSSceneBuilder
         SetPrivate(roomController, "_loopTimer", loopTimer);
         SetPrivate(roomController, "_deathFlash", flashImg);
 
+        // ---- Fase 10 M2: pool de salas real ----
+        BuildRoomPool(cam, playerController, echoManager, loopTimer, spawnGO, gridGO, hazardGO, groundTile);
+
         // ---- Save scene, register in build settings ----
         EditorSceneManager.SaveScene(scene, ScenePath);
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -311,6 +314,151 @@ public static class VSSceneBuilder
         AssetDatabase.Refresh();
 
         Debug.Log("[VSSceneBuilder] Scene build complete: " + ScenePath);
+    }
+
+    // Fase 10 M2: envuelve la sala original como "Room 0" (SOLO, sin palancas) y construye
+    // 2 salas SYNC nuevas — cada una resoluble con el eco de 1 solo slot (el default del VS),
+    // parándose sobre una palanca casi los 8s completos del loop para que el eco la sostenga
+    // mientras el jugador cruza la puerta. No son las 50 salas del plan — son un pool real
+    // y jugable que prueba el sistema de ensamblaje end-to-end.
+    private static void BuildRoomPool(Camera cam, PlayerController playerController, EchoManager echoManager,
+        LoopTimer loopTimer, GameObject spawnGO, GameObject gridGO, GameObject hazardGO, TileBase groundTile)
+    {
+        Directory.CreateDirectory("Assets/Rooms");
+
+        var assemblerGO = new GameObject("RoomAssembler");
+        var assembler = assemblerGO.AddComponent<RoomAssembler>();
+        SetPrivate(assembler, "_camera", cam);
+        SetPrivate(assembler, "_player", playerController);
+        SetPrivate(assembler, "_echoManager", echoManager);
+        SetPrivate(assembler, "_loopTimer", loopTimer);
+
+        // ---- Room 0: la sala original del VS, envuelta como sala SOLO del pool ----
+        var room0Container = new GameObject("Room_Z1_SOLO_Original");
+        gridGO.transform.SetParent(room0Container.transform);
+        hazardGO.transform.SetParent(room0Container.transform);
+
+        var room0CamAnchor = new GameObject("CameraAnchor").transform;
+        room0CamAnchor.SetParent(room0Container.transform);
+        room0CamAnchor.position = new Vector3(3f, 1.5f, 0f);
+
+        var room0Exit = new GameObject("RoomExit");
+        room0Exit.transform.SetParent(room0Container.transform);
+        room0Exit.transform.position = new Vector3(28f, 1f, 0f);
+        var room0ExitCol = room0Exit.AddComponent<BoxCollider2D>();
+        room0ExitCol.size = new Vector2(1f, 3f);
+        room0Exit.AddComponent<RoomExit>();
+
+        var room0Data = ScriptableObject.CreateInstance<RoomData>();
+        room0Data.roomId = "Z1_SOLO_ORIGINAL";
+        room0Data.zoneId = 1;
+        room0Data.difficultyTier = 1;
+        room0Data.mechanic = PrimaryMechanic.SOLO;
+        room0Data.hasAltSolution = true;
+        room0Data.introRunMin = 1;
+        AssetDatabase.CreateAsset(room0Data, "Assets/Rooms/Z1_SOLO_ORIGINAL.asset");
+
+        assembler.RegisterRoom(new RoomInstance
+        {
+            data = room0Data,
+            container = room0Container,
+            spawnPoint = spawnGO.transform,
+            cameraAnchor = room0CamAnchor,
+        });
+        // RegisterRoom desactiva el contenedor por default (las salas del pool solo se activan
+        // vía AssembleRun). Room 0 debe quedar visible/jugable de entrada — igual que el VS ya
+        // verificado — para no romper el flujo de prueba directo sin pasar por F4/StartRun().
+        room0Container.SetActive(true);
+
+        // ---- 2 salas SYNC nuevas: palanca + puerta, resoluble con 1 eco ----
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_01", xOffset: 100f, leverX: 5f, doorX: 14f, exitX: 17f);
+        BuildSyncRoom(assembler, groundTile, "Z1_SYNC_02", xOffset: 200f, leverX: 4f, doorX: 11f, exitX: 14f);
+    }
+
+    private static void BuildSyncRoom(RoomAssembler assembler, TileBase groundTile, string roomId,
+        float xOffset, float leverX, float doorX, float exitX)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+
+        // Floor: una sola franja sólida, suficientemente larga para cubrir palanca+puerta+salida.
+        float floorWidth = exitX + 4f;
+        var floorGO = new GameObject("Floor");
+        floorGO.transform.SetParent(container.transform, false);
+        floorGO.transform.localPosition = new Vector3(floorWidth * 0.5f, 0f, 0f);
+        floorGO.layer = LayerMask.NameToLayer("Ground");
+        var floorSr = floorGO.AddComponent<SpriteRenderer>();
+        floorSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+        floorSr.sortingLayerName = "Terrain";
+        floorSr.drawMode = SpriteDrawMode.Tiled;
+        floorSr.size = new Vector2(floorWidth, 2f);
+        var floorCol = floorGO.AddComponent<BoxCollider2D>();
+        floorCol.size = new Vector2(floorWidth, 2f);
+
+        // Palanca — el jugador (o el eco) debe estar parado sobre ella para sostener la puerta.
+        var leverGO = new GameObject("Lever");
+        leverGO.transform.SetParent(container.transform, false);
+        leverGO.transform.localPosition = new Vector3(leverX, 1.5f, 0f);
+        var leverSr = leverGO.AddComponent<SpriteRenderer>();
+        leverSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+        leverSr.sortingLayerName = "Hazard";
+        leverGO.transform.localScale = new Vector3(1.4f, 0.3f, 1f);
+        var leverCol = leverGO.AddComponent<BoxCollider2D>();
+        var lever = leverGO.AddComponent<TriggerLever>();
+
+        // Puerta — bloquea el paso hasta que la palanca esté sostenida.
+        var doorGO = new GameObject("Door");
+        doorGO.transform.SetParent(container.transform, false);
+        doorGO.transform.localPosition = new Vector3(doorX, 1.5f, 0f);
+        // Sin esto la puerta quedaba en layer Default (0), fuera de _groundMask (Ground+Platform) —
+        // el jugador la atravesaba sin importar su estado abierto/cerrado. Solo el RoomExit
+        // (el trigger lógico) respetaba _requiredDoor.IsOpen; la puerta en sí no bloqueaba nada.
+        doorGO.layer = LayerMask.NameToLayer("Ground");
+        var doorSr = doorGO.AddComponent<SpriteRenderer>();
+        doorSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/hazard.png");
+        doorSr.sortingLayerName = "Hazard";
+        doorGO.transform.localScale = new Vector3(0.8f, 3f, 1f);
+        var doorCol = doorGO.AddComponent<BoxCollider2D>();
+        var door = doorGO.AddComponent<DoorGate>();
+        // _requiredCount ya es 1 por default en DoorGate — exactamente lo que necesita
+        // una sala resoluble con el eco de 1 solo slot.
+        SetPrivate(lever, "_linkedDoor", door);
+
+        // Salida — zona ancha para que el jugador pueda cruzar sin soltar el trigger antes
+        // de tiempo si camina justo detrás de la puerta.
+        var exitGO = new GameObject("RoomExit");
+        exitGO.transform.SetParent(container.transform, false);
+        exitGO.transform.localPosition = new Vector3(exitX, 1f, 0f);
+        var exitCol = exitGO.AddComponent<BoxCollider2D>();
+        exitCol.size = new Vector2(1.5f, 3f);
+        var exit = exitGO.AddComponent<RoomExit>();
+        SetPrivate(exit, "_requiredDoor", door);
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(floorWidth * 0.4f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 1;
+        data.difficultyTier = 2;
+        data.mechanic = PrimaryMechanic.SYNC;
+        data.ecoCountRequired = 1;
+        data.hasAltSolution = false;
+        data.introRunMin = 1;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
     }
 
     public static void BuildPlayerExe()
