@@ -1,0 +1,87 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 3
+  tags:
+  - Player
+  - Echo
+  - Hazard
+  - Ground
+  - Pickup
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - 
+  - Water
+  - UI
+  - Ground
+  - Player
+  - Echo
+  - Hazard
+  - Platform
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Background_Far
+    uniqueID: 0
+    locked: 0
+  - name: Background_Mid
+    uniqueID: 1
+    locked: 0
+  - name: Background_Near
+    uniqueID: 2
+    locked: 0
+  - name: Terrain
+    uniqueID: 3
+    locked: 0
+  - name: Hazard
+    uniqueID: 4
+    locked: 0
+  - name: Echo_3
+    uniqueID: 5
+    locked: 0
+  - name: Echo_2
+    uniqueID: 6
+    locked: 0
+  - name: Echo_1
+    uniqueID: 7
+    locked: 0
+  - name: Player
+    uniqueID: 8
+    locked: 0
+  - name: VFX
+    uniqueID: 9
+    locked: 0
+  - name: UI_World
+    uniqueID: 10
+    locked: 0
+  - name: UI_HUD
+    uniqueID: 11
+    locked: 0
+  - name: UI_Modal
+    uniqueID: 12
+    locked: 0
+  m_RenderingLayers:
+  - Default
+  m_MigratedRenderPipelines: []
