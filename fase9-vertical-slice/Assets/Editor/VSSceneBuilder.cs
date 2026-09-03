@@ -373,6 +373,98 @@ public static class VSSceneBuilder
         // ---- 2 salas SYNC nuevas: palanca + puerta, resoluble con 1 eco ----
         BuildSyncRoom(assembler, groundTile, "Z1_SYNC_01", xOffset: 100f, leverX: 5f, doorX: 14f, exitX: 17f);
         BuildSyncRoom(assembler, groundTile, "Z1_SYNC_02", xOffset: 200f, leverX: 4f, doorX: 11f, exitX: 14f);
+
+        // ---- Salas SOLO/TIMING adicionales: más rápidas de producir en volumen que las
+        // SYNC (sin palanca/puerta/eco que verificar), crecen la variedad real del pool. ----
+        BuildTraversalRoom(assembler, "Z1_SOLO_02", xOffset: 300f, length: 16f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_03", xOffset: 350f, length: 20f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_01", xOffset: 400f, length: 18f, hasGap: true, gapStart: 8f, gapWidth: 3f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_02", xOffset: 450f, length: 22f, hasGap: true, gapStart: 6f, gapWidth: 4f);
+        BuildTraversalRoom(assembler, "Z1_TIMING_03", xOffset: 500f, length: 24f, hasGap: true, gapStart: 12f, gapWidth: 3f);
+        BuildTraversalRoom(assembler, "Z1_SOLO_04", xOffset: 550f, length: 14f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+    }
+
+    // Sala de traversal simple: piso plano, opcionalmente con un foso que exige saltar
+    // (TIMING) o sin él (SOLO). Sin palanca/puerta — el checklist de verificación es solo
+    // "el jugador puede caminar/saltar de un extremo al otro", mucho más rápido de producir
+    // en volumen que las salas SYNC con eco.
+    private static void BuildTraversalRoom(RoomAssembler assembler, string roomId, float xOffset,
+        float length, bool hasGap, float gapStart, float gapWidth)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+
+        void AddFloorSegment(float startX, float endX)
+        {
+            float w = endX - startX;
+            if (w <= 0f) return;
+            var segGO = new GameObject($"Floor_{startX:F0}_{endX:F0}");
+            segGO.transform.SetParent(container.transform, false);
+            segGO.transform.localPosition = new Vector3(startX + w * 0.5f, 0f, 0f);
+            segGO.layer = LayerMask.NameToLayer("Ground");
+            var sr = segGO.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+            sr.sortingLayerName = "Terrain";
+            sr.drawMode = SpriteDrawMode.Tiled;
+            sr.size = new Vector2(w, 2f);
+            var col = segGO.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(w, 2f);
+        }
+
+        if (hasGap)
+        {
+            AddFloorSegment(0f, gapStart);
+            AddFloorSegment(gapStart + gapWidth, length);
+
+            // Red de seguridad: sin esto, fallar el salto = caer para siempre sin morir/resetear
+            // (softlock real — lo encontré probando esta sala: el jugador cayó hasta y=-207
+            // y se quedó ahí, RunState nunca avanzó). HazardSpike ya maneja muerte+reset;
+            // solo hace falta un trigger ancho bien abajo del foso.
+            var voidGO = new GameObject("VoidKillZone");
+            voidGO.transform.SetParent(container.transform, false);
+            voidGO.transform.localPosition = new Vector3(gapStart + gapWidth * 0.5f, -15f, 0f);
+            voidGO.layer = LayerMask.NameToLayer("Hazard");
+            var voidCol = voidGO.AddComponent<BoxCollider2D>();
+            voidCol.size = new Vector2(gapWidth + 6f, 4f);
+            voidGO.AddComponent<HazardSpike>();
+        }
+        else
+        {
+            AddFloorSegment(0f, length);
+        }
+
+        var exitGO = new GameObject("RoomExit");
+        exitGO.transform.SetParent(container.transform, false);
+        exitGO.transform.localPosition = new Vector3(length - 1f, 1f, 0f);
+        var exitCol = exitGO.AddComponent<BoxCollider2D>();
+        exitCol.size = new Vector2(1.5f, 3f);
+        exitGO.AddComponent<RoomExit>();
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(length * 0.4f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 1;
+        data.difficultyTier = hasGap ? 2 : 1;
+        data.mechanic = hasGap ? PrimaryMechanic.TIMING : PrimaryMechanic.SOLO;
+        data.ecoCountRequired = 0;
+        data.hasAltSolution = true;
+        data.introRunMin = 1;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
     }
 
     private static void BuildSyncRoom(RoomAssembler assembler, TileBase groundTile, string roomId,

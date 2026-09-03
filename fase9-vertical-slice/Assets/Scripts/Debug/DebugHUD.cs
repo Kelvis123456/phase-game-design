@@ -61,8 +61,9 @@ public class DebugHUD : MonoBehaviour
         string a2Text = Services.TryGet<ProgressionSystem>(out var prog3) ? prog3.IsNodeUnlocked("A2").ToString() : "?";
         string runStateText = Services.TryGet<RunManager>(out var run) ? run.CurrentState.ToString() : "NULL";
         string echoActiveText = Services.TryGet<EchoManager>(out var em) ? em.ActiveCount.ToString() : "NULL";
+        string roomText = Services.TryGet<RoomAssembler>(out var asm) && asm.CurrentRoom != null ? asm.CurrentRoom.roomId : "(none)";
 
-        GUI.Box(new Rect(5, 5, 700, 300), "");
+        GUI.Box(new Rect(5, 5, 700, 320), "");
         GUI.Label(new Rect(15, 10, 680, 24), $"frame={_frameCount} t={Time.time:F2} dt={Time.deltaTime:F4}", style);
         GUI.Label(new Rect(15, 34, 680, 24), $"player.pos={posText}", style);
         GUI.Label(new Rect(15, 58, 680, 24), $"rb.pos={rbText}", style);
@@ -73,7 +74,7 @@ public class DebugHUD : MonoBehaviour
         GUI.Label(new Rect(15, 178, 680, 24), $"groundCollider bounds={boundsText} enabled={enabledText}{compositePathCount}", style);
         GUI.Label(new Rect(15, 202, 680, 24), $"groundMask={groundMask.value}", style);
         GUI.Label(new Rect(15, 226, 680, 24), $"PhaseCrystals={crystalsText}  A2unlocked={a2Text}  echoActive={echoActiveText}", style);
-        GUI.Label(new Rect(15, 250, 680, 24), $"RunState={runStateText}", style);
+        GUI.Label(new Rect(15, 250, 680, 24), $"RunState={runStateText}  Room={roomText}", style);
         GUI.Label(new Rect(15, 274, 680, 24), $"[F2 earn][F3 unlock A2][F4 start run] last: {_lastAction}", style);
     }
 }

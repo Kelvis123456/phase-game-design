@@ -75,8 +75,15 @@ public class VSRoomController : MonoBehaviour
 
     private void ResetRoom()
     {
+        // Si RoomAssembler tiene una sala activa (estamos en un run), resetear ahí — no
+        // siempre es la Room 0 original. Sin esto, morir en cualquier otra sala te
+        // devolvía al spawn fijo de la Room 0, incluso si ya estaba desactivada.
+        Transform spawn = _playerSpawnPoint;
+        if (Services.TryGet<RoomAssembler>(out var assembler) && assembler.CurrentSpawnPoint != null)
+            spawn = assembler.CurrentSpawnPoint;
+
         // Reset jugador
-        _player.ResetToPosition(_playerSpawnPoint.position);
+        _player.ResetToPosition(spawn.position);
         _playerStats.ResetStats();
 
         // Borrar ecos
