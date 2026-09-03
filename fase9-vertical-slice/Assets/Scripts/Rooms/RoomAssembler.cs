@@ -101,4 +101,9 @@ public class RoomAssembler : MonoBehaviour
     }
 
     public RoomData CurrentRoom => (_currentIndex >= 0 && _currentIndex < _runSequence.Count) ? _runSequence[_currentIndex].data : null;
+
+    // El controlador de muerte/reset (VSRoomController) necesita saber DÓNDE resetear al
+    // jugador — no siempre es la Room 0 original. Sin esto, morir en cualquier otra sala
+    // te devolvía al spawn de la Room 0 (posiblemente desactivada), rompiendo el flujo.
+    public Transform CurrentSpawnPoint => (_currentIndex >= 0 && _currentIndex < _runSequence.Count) ? _runSequence[_currentIndex].spawnPoint : null;
 }
