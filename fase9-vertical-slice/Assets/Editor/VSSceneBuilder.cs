@@ -306,6 +306,9 @@ public static class VSSceneBuilder
         var progressionUIGO = new GameObject("ProgressionTreeUI");
         progressionUIGO.AddComponent<ProgressionTreeUI>();
 
+        var upgradeSelectorGO = new GameObject("UpgradeSelectorUI");
+        upgradeSelectorGO.AddComponent<UpgradeSelectorUI>();
+
         var roomControllerGO = new GameObject("VSRoomController");
         var roomController = roomControllerGO.AddComponent<VSRoomController>();
         SetPrivate(roomController, "_playerSpawnPoint", spawnGO.transform);

@@ -100,7 +100,30 @@ public class RoomAssembler : MonoBehaviour
     {
         if (Services.TryGet<RunManager>(out var run))
             run.RoomCleared();
-        LoadNext();
+
+        // GDD §7.3: 60% de probabilidad de ofrecer un upgrade de run entre salas.
+        bool offerUpgrade = _currentIndex + 1 < _runSequence.Count // no ofrecer después de la última sala
+            && UnityEngine.Random.value < 0.6f
+            && Services.TryGet<UpgradeSelectorUI>(out var selectorUI)
+            && RunManager.UpgradeTable.Count >= 2;
+
+        if (offerUpgrade)
+        {
+            int idxA = UnityEngine.Random.Range(0, RunManager.UpgradeTable.Count);
+            int idxB;
+            do { idxB = UnityEngine.Random.Range(0, RunManager.UpgradeTable.Count); } while (idxB == idxA);
+
+            Services.Get<UpgradeSelectorUI>().Show(RunManager.UpgradeTable[idxA], RunManager.UpgradeTable[idxB], picked =>
+            {
+                if (picked != null && Services.TryGet<RunManager>(out var runRef))
+                    runRef.ApplyUpgrade(picked);
+                LoadNext();
+            });
+        }
+        else
+        {
+            LoadNext();
+        }
     }
 
     public RoomData CurrentRoom => (_currentIndex >= 0 && _currentIndex < _runSequence.Count) ? _runSequence[_currentIndex].data : null;

@@ -69,7 +69,12 @@ public class ProgressionSystem : MonoBehaviour
 
     public void EarnCrystals(EarnSource source)
     {
-        int amount = AmountFor(source);
+        EarnFlat(AmountFor(source));
+    }
+
+    // Para bonos que no vienen de una EarnSource tabulada (ej. el upgrade de run "PC Bonus").
+    public void EarnFlat(int amount)
+    {
         _save.Current.metaProgression.phaseCrystalBalance += amount;
         _save.Current.metaProgression.fragmentsTotal += amount;
         OnBalanceChanged?.Invoke(PhaseCrystalBalance);
