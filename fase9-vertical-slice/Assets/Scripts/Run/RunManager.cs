@@ -19,12 +19,11 @@ public class RunManager : MonoBehaviour
     private SaveSystem _save;
     private ProgressionSystem _progression;
 
-    // Fase 10 M3.3 + M3.4: upgrades de run (GDD §7.3, tabla R01-R12). 6 de 12 con efecto
-    // real conectado (R01/R02/R03/R04/R11/R12); R05/R06/R07/R08/R09/R10 no están todavía —
-    // cada uno necesita un sistema nuevo (lookahead de trigger, trails de eco, inyección de
-    // sala extra, red de seguridad de reinicio, duplicado de eco, UI de revelación) en vez
-    // de solo un multiplicador, así que quedan fuera de este pase para no vender un upgrade
-    // seleccionable que en realidad no hace nada.
+    // Fase 10 M3.3 + M3.4 + M3.5: upgrades de run (GDD §7.3, tabla R01-R12). 9 de 12 con
+    // efecto real conectado. R05 (lookahead de trigger) y R06/R10 (trails de eco / UI de
+    // revelación) quedan fuera — cada uno es un sistema visual nuevo, no una regla de
+    // simulación, así que no entran en este pase para no vender un upgrade seleccionable
+    // que en realidad no hace nada.
     public RunUpgradeEffects ActiveUpgrades { get; private set; } = new RunUpgradeEffects();
     public static readonly System.Collections.Generic.List<RunUpgrade> UpgradeTable = new System.Collections.Generic.List<RunUpgrade>
     {
@@ -32,6 +31,9 @@ public class RunManager : MonoBehaviour
         new RunUpgrade("R02", "Eco Lento", "Los ecos de esta run corren al 0.8x — amplía ventanas de sincronización", e => e.echoSpeedMultiplier = 0.8f),
         new RunUpgrade("R03", "Bullet Extendido", "Transición de bullet-time más suave (QoL, no poder)", e => e.bulletTimeDeactivateBonus += 3f),
         new RunUpgrade("R04", "Doble Loop", "Los ecos completan su loop dos veces más rápido (frecuencia, no velocidad)", e => e.loopDurationMultiplier = 0.5f),
+        new RunUpgrade("R07", "Sala Bonus", "Se añade una 5ta sala de dificultad baja, +50% Phase Crystals al completar", e => { e.bonusRoomRequested = true; e.pcBonusOnComplete += 15; }),
+        new RunUpgrade("R08", "Reinicio de Sala", "Si mueres una vez, esa sala te perdona (conservas ecos y progreso) — un solo uso", e => e.roomRestartAvailable = true),
+        new RunUpgrade("R09", "Eco Duplicado", "El primer eco de la run se duplica — 2 ecos con la misma ruta desde el principio", e => e.duplicateFirstEcho = true),
         new RunUpgrade("R11", "Mundo Lento", "El mundo corre a 0.85x — facilita el timing sin afectar ecos", e => e.worldSlowMultiplier = 0.85f),
         new RunUpgrade("R12", "PC Bonus", "+100 Phase Crystals al completar la run", e => e.pcBonusOnComplete += 100),
     };
@@ -45,6 +47,25 @@ public class RunManager : MonoBehaviour
         }
         if (Services.TryGet<LoopTimer>(out var loop))
             loop.SetDurationMultiplier(ActiveUpgrades.loopDurationMultiplier);
+
+        // R07 Sala Bonus: se consume una sola vez — si el jugador ya la tiene y la
+        // vuelve a ver en otra selección (no debería, pero por si acaso), no duplicar salas.
+        if (ActiveUpgrades.bonusRoomRequested)
+        {
+            ActiveUpgrades.bonusRoomRequested = false;
+            if (Services.TryGet<RoomAssembler>(out var assembler))
+                assembler.InjectBonusRoom();
+        }
+    }
+
+    // R08 Reinicio de Sala: VSRoomController llama esto al morir. Si hay un reinicio
+    // disponible, se consume (una sola vez por run) y el llamador hace un reset suave
+    // (conserva ecos/grabación) en vez del reset completo.
+    public bool ConsumeRoomRestart()
+    {
+        if (!ActiveUpgrades.roomRestartAvailable) return false;
+        ActiveUpgrades.roomRestartAvailable = false;
+        return true;
     }
 
     private void Awake() => Services.Register(this);
@@ -65,6 +86,8 @@ public class RunManager : MonoBehaviour
         _save.Save();
         ActiveUpgrades = new RunUpgradeEffects();
         PushUpgradesToSystems();
+        if (Services.TryGet<EchoManager>(out var echoManager))
+            echoManager.ResetForNewRun();
         TransitionTo(RunState.RoomTransition);
         TransitionTo(RunState.RoomActive);
 

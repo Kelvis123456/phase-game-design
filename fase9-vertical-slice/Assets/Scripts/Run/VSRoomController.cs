@@ -86,13 +86,16 @@ public class VSRoomController : MonoBehaviour
         _player.ResetToPosition(spawn.position);
         _playerStats.ResetStats();
 
-        // Borrar ecos
-        _echoManager.ClearAllEchos();
+        // R08 Reinicio de Sala: si hay un reinicio disponible este run, se consume acá y
+        // el reset es "suave" — el jugador conserva sus ecos y la grabación en curso, no
+        // pierde el progreso de la sala por ese primer error.
+        bool forgiven = Services.TryGet<RunManager>(out var run) && run.ConsumeRoomRestart();
+        if (!forgiven)
+        {
+            _echoManager.ClearAllEchos();
+            _recorder.ResetBuffer();
+        }
 
-        // Reiniciar grabación
-        _recorder.ResetBuffer();
-
-        // Reiniciar timer
         _loopTimer.StartLoop();
 
         _resetting = false;
