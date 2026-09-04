@@ -102,6 +102,7 @@ public static class VSSceneBuilder
         _leverOnSprite = ImportRealSprite("lever_on.png", "Assets/Art/lever_on.png", PPU);
         _doorClosedSprite = ImportRealSprite("door_closed.png", "Assets/Art/door_closed.png", PPU);
         _doorOpenSprite = ImportRealSprite("door_open.png", "Assets/Art/door_open.png", PPU);
+        Sprite keyartSprite = ImportUISprite("keyart.png", "Assets/Art/keyart.png");
 
         TileBase groundTile = CreateTile("Assets/Tiles/GroundTile.asset", groundSprite);
 
@@ -316,6 +317,10 @@ public static class VSSceneBuilder
 
         var upgradeSelectorGO = new GameObject("UpgradeSelectorUI");
         upgradeSelectorGO.AddComponent<UpgradeSelectorUI>();
+
+        var mainMenuGO = new GameObject("MainMenuUI");
+        var mainMenu = mainMenuGO.AddComponent<MainMenuUI>();
+        SetPrivate(mainMenu, "_background", keyartSprite);
 
         var roomControllerGO = new GameObject("VSRoomController");
         var roomController = roomControllerGO.AddComponent<VSRoomController>();
@@ -672,6 +677,26 @@ public static class VSSceneBuilder
         importer.spritePixelsPerUnit = ppu;
         importer.filterMode = FilterMode.Point;
         importer.textureCompression = TextureImporterCompression.Uncompressed;
+        importer.spriteImportMode = SpriteImportMode.Single;
+        importer.mipmapEnabled = false;
+        importer.SaveAndReimport();
+
+        return AssetDatabase.LoadAssetAtPath<Sprite>(destPath);
+    }
+
+    // Arte de UI de alta resolución (keyart), no pixel art: filtrado bilinear y
+    // compresión normal, a diferencia de ImportRealSprite (sprites de gameplay).
+    private static Sprite ImportUISprite(string sourceName, string destPath)
+    {
+        string sourcePath = $"Assets/ArtSource/{sourceName}";
+        File.Copy(sourcePath, destPath, true);
+        AssetDatabase.ImportAsset(destPath);
+
+        var importer = (TextureImporter)AssetImporter.GetAtPath(destPath);
+        importer.textureType = TextureImporterType.Sprite;
+        importer.spritePixelsPerUnit = 100;
+        importer.filterMode = FilterMode.Bilinear;
+        importer.textureCompression = TextureImporterCompression.Compressed;
         importer.spriteImportMode = SpriteImportMode.Single;
         importer.mipmapEnabled = false;
         importer.SaveAndReimport();
