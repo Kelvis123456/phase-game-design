@@ -8,8 +8,8 @@ public class TriggerLever : MonoBehaviour
 {
     [SerializeField] private DoorGate _linkedDoor;
     [SerializeField] private SpriteRenderer _sprite;
-    [SerializeField] private Color _colorOff = new Color(0.23f, 0.29f, 0.42f, 1f);
-    [SerializeField] private Color _colorOn = new Color(0.31f, 1f, 0.81f, 1f);
+    [SerializeField] private Sprite _spriteOff;
+    [SerializeField] private Sprite _spriteOn;
 
     public bool IsActive { get; private set; }
 
@@ -17,6 +17,7 @@ public class TriggerLever : MonoBehaviour
     {
         var col = GetComponent<Collider2D>();
         col.isTrigger = true;
+        if (_sprite == null) _sprite = GetComponent<SpriteRenderer>();
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -40,7 +41,11 @@ public class TriggerLever : MonoBehaviour
     private void SetActive(bool active)
     {
         IsActive = active;
-        if (_sprite) _sprite.color = active ? _colorOn : _colorOff;
+        if (_sprite != null)
+        {
+            var next = active ? _spriteOn : _spriteOff;
+            if (next != null) _sprite.sprite = next;
+        }
         if (_linkedDoor) _linkedDoor.SetHeld(this, active);
     }
 }
