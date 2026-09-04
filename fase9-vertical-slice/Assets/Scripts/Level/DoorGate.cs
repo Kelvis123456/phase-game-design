@@ -50,4 +50,17 @@ public class DoorGate : MonoBehaviour
             if (next != null) _sprite.sprite = next;
         }
     }
+
+    // GDD Sala Tutorial 2 "El Momento No Planeado": el contrapeso de una palanca
+    // hermana puede cerrar esta puerta de golpe, sin importar quién la esté
+    // sosteniendo — es lo que rompe el plan "obvio" del jugador. Usado por
+    // CounterweightLink, no por TriggerLever normal.
+    public void ForceClose()
+    {
+        _holding.Clear();
+        if (!IsOpen) return;
+        IsOpen = false;
+        if (_blocker) _blocker.enabled = true;
+        if (_sprite != null && _spriteClosed != null) _sprite.sprite = _spriteClosed;
+    }
 }

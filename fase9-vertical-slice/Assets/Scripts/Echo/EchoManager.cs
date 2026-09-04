@@ -128,4 +128,23 @@ public class EchoManager : MonoBehaviour
 
     public void UnlockSlot() => _maxEchos = Mathf.Min(_maxEchos + 1, 5);
     public int ActiveCount => _activeCount;
+
+    // GDD §5 Tutorial: la run tutorial asume que el jugador ya tiene la capacidad de
+    // eco que las salas necesitan (Sala 3 pide 2 ecos ya acumulados), pero es su
+    // PRIMERA run — no compró nada todavía. Esto sube el tope solo para el tutorial,
+    // sin tocar (ni fingir) el progreso real del árbol.
+    private int _preTutorialMaxEchos = -1;
+
+    public void SetTemporaryMaxEchos(int count)
+    {
+        if (_preTutorialMaxEchos < 0) _preTutorialMaxEchos = _maxEchos;
+        _maxEchos = Mathf.Max(_maxEchos, count);
+    }
+
+    public void RestoreMaxEchos()
+    {
+        if (_preTutorialMaxEchos < 0) return;
+        _maxEchos = _preTutorialMaxEchos;
+        _preTutorialMaxEchos = -1;
+    }
 }

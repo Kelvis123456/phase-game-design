@@ -16,6 +16,7 @@ public class RunManager : MonoBehaviour
     private float _runStartTime;
     private int _roomsCleared;
     private int _echosCreated;
+    private bool _isTutorialRun;
     private SaveSystem _save;
     private ProgressionSystem _progression;
 
@@ -91,8 +92,15 @@ public class RunManager : MonoBehaviour
         TransitionTo(RunState.RoomTransition);
         TransitionTo(RunState.RoomActive);
 
+        // GDD §5: la PRIMERA run del jugador es siempre el tutorial — 4 salas fijas en
+        // vez del pool aleatorio, sin texto, la lección viene del diseño de nivel.
+        _isTutorialRun = !_save.Current.metaProgression.tutorialCompleted;
+
         if (Services.TryGet<RoomAssembler>(out var assembler))
-            assembler.AssembleRun(roomCount: 4, seed: UnityEngine.Random.Range(100000, 999999));
+        {
+            if (_isTutorialRun) assembler.AssembleTutorialRun();
+            else assembler.AssembleRun(roomCount: 4, seed: UnityEngine.Random.Range(100000, 999999));
+        }
     }
 
     public void RoomCleared()
@@ -126,6 +134,10 @@ public class RunManager : MonoBehaviour
             bossDefeated = bossDefeated,
         };
         _save.Current.runHistory.Add(entry);
+
+        if (_isTutorialRun)
+            _save.Current.metaProgression.tutorialCompleted = true;
+
         _save.Save();
 
         if (_progression != null)

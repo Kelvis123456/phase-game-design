@@ -26,6 +26,7 @@ public class SaveData
         public int totalRunsCompleted;
         public int totalRunsAttempted;
         public int phaseCrystalBalance;
+        public bool tutorialCompleted; // GDD §5 — Run 1 es siempre el tutorial hasta que esto sea true
     }
 
     [Serializable]

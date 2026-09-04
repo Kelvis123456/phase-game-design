@@ -63,7 +63,11 @@ public class EchoPlayer : MonoBehaviour
 
     private void ApplySnapshot(InputRecorder.Snapshot snap)
     {
-        transform.position = snap.position;
+        // snap.position es relativa al origen X de la sala donde se grabó — sumar el
+        // origen de la sala ACTUAL reconstruye la posición absoluta correcta incluso si
+        // el eco se está reproduciendo en una sala distinta a la que se grabó.
+        float roomOriginX = Services.TryGet<RoomAssembler>(out var asm) ? asm.CurrentRoomOriginX : 0f;
+        transform.position = new Vector3(snap.position.x + roomOriginX, snap.position.y, 0f);
         if (_sprite) _sprite.flipX = !snap.facingRight;
 
         if (_animator)
