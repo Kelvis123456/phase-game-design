@@ -10,8 +10,8 @@ public class DoorGate : MonoBehaviour
 {
     [SerializeField] private int _requiredCount = 1;
     [SerializeField] private SpriteRenderer _sprite;
-    [SerializeField] private Color _colorClosed = new Color(0.55f, 0.13f, 0.19f, 1f);
-    [SerializeField] private Color _colorOpen = new Color(0.12f, 0.23f, 0.16f, 1f);
+    [SerializeField] private Sprite _spriteClosed;
+    [SerializeField] private Sprite _spriteOpen;
 
     private readonly HashSet<TriggerLever> _holding = new HashSet<TriggerLever>();
     private Collider2D _blocker;
@@ -21,6 +21,7 @@ public class DoorGate : MonoBehaviour
     private void Awake()
     {
         _blocker = GetComponent<Collider2D>();
+        if (_sprite == null) _sprite = GetComponent<SpriteRenderer>();
     }
 
     public void SetHeld(TriggerLever lever, bool held)
@@ -33,6 +34,10 @@ public class DoorGate : MonoBehaviour
 
         IsOpen = shouldBeOpen;
         if (_blocker) _blocker.enabled = !IsOpen;
-        if (_sprite) _sprite.color = IsOpen ? _colorOpen : _colorClosed;
+        if (_sprite != null)
+        {
+            var next = IsOpen ? _spriteOpen : _spriteClosed;
+            if (next != null) _sprite.sprite = next;
+        }
     }
 }

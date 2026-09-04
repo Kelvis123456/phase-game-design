@@ -26,6 +26,10 @@ public static class VSSceneBuilder
         "Echo_3", "Echo_2", "Echo_1", "Player", "VFX", "UI_World", "UI_HUD", "UI_Modal"
     };
 
+    // Set una vez en BuildScene() e leídas por BuildSyncRoom() — evita pasar 4 sprites
+    // más por parámetro en los 16+ call sites existentes.
+    private static Sprite _leverOffSprite, _leverOnSprite, _doorClosedSprite, _doorOpenSprite;
+
     public static void BuildAll()
     {
         SetupProjectSettings();
@@ -91,9 +95,13 @@ public static class VSSceneBuilder
         Directory.CreateDirectory("Assets/Tiles");
 
         // ---- Placeholder art ----
-        Sprite groundSprite = CreateSolidSprite("Assets/Art/tile_ground.png", new Color32(58, 66, 84, 255), 16, 16);
-        Sprite playerSprite = CreateSolidSprite("Assets/Art/player.png", new Color32(232, 238, 248, 255), 16, 32);
-        Sprite hazardSprite = CreateSolidSprite("Assets/Art/hazard.png", new Color32(200, 60, 60, 255), 16, 16);
+        Sprite groundSprite = ImportRealSprite("tile_ground.png", "Assets/Art/tile_ground.png", PPU);
+        Sprite playerSprite = ImportRealSprite("player.png", "Assets/Art/player.png", PPU);
+        Sprite hazardSprite = ImportRealSprite("hazard.png", "Assets/Art/hazard.png", PPU);
+        _leverOffSprite = ImportRealSprite("lever_off.png", "Assets/Art/lever_off.png", PPU);
+        _leverOnSprite = ImportRealSprite("lever_on.png", "Assets/Art/lever_on.png", PPU);
+        _doorClosedSprite = ImportRealSprite("door_closed.png", "Assets/Art/door_closed.png", PPU);
+        _doorOpenSprite = ImportRealSprite("door_open.png", "Assets/Art/door_open.png", PPU);
 
         TileBase groundTile = CreateTile("Assets/Tiles/GroundTile.asset", groundSprite);
 
@@ -554,11 +562,12 @@ public static class VSSceneBuilder
         leverGO.transform.SetParent(container.transform, false);
         leverGO.transform.localPosition = new Vector3(leverX, 1.5f, 0f);
         var leverSr = leverGO.AddComponent<SpriteRenderer>();
-        leverSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+        leverSr.sprite = _leverOffSprite;
         leverSr.sortingLayerName = "Hazard";
-        leverGO.transform.localScale = new Vector3(1.4f, 0.3f, 1f);
         var leverCol = leverGO.AddComponent<BoxCollider2D>();
         var lever = leverGO.AddComponent<TriggerLever>();
+        SetPrivate(lever, "_spriteOff", _leverOffSprite);
+        SetPrivate(lever, "_spriteOn", _leverOnSprite);
 
         // Puerta — bloquea el paso hasta que la palanca esté sostenida.
         var doorGO = new GameObject("Door");
@@ -569,11 +578,13 @@ public static class VSSceneBuilder
         // (el trigger lógico) respetaba _requiredDoor.IsOpen; la puerta en sí no bloqueaba nada.
         doorGO.layer = LayerMask.NameToLayer("Ground");
         var doorSr = doorGO.AddComponent<SpriteRenderer>();
-        doorSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/hazard.png");
+        doorSr.sprite = _doorClosedSprite;
         doorSr.sortingLayerName = "Hazard";
-        doorGO.transform.localScale = new Vector3(0.8f, 3f, 1f);
+        doorGO.transform.localScale = new Vector3(1f, 1.5f, 1f);
         var doorCol = doorGO.AddComponent<BoxCollider2D>();
         var door = doorGO.AddComponent<DoorGate>();
+        SetPrivate(door, "_spriteClosed", _doorClosedSprite);
+        SetPrivate(door, "_spriteOpen", _doorOpenSprite);
         // _requiredCount ya es 1 por default en DoorGate — exactamente lo que necesita
         // una sala resoluble con el eco de 1 solo slot.
         SetPrivate(lever, "_linkedDoor", door);
@@ -645,6 +656,27 @@ public static class VSSceneBuilder
         {
             Debug.LogError("[VSSceneBuilder] BUILD FAILED");
         }
+    }
+
+    // Fase 10: arte pixel real (Assets/ArtSource/, hecho a mano pixel por pixel siguiendo
+    // la paleta de la Fase 6 — jugador #D8E4F0, sombra #8AA0BC, acento #4FFFCE, peligro
+    // #8B2030) en vez de los rectángulos de color placeholder de CreateSolidSprite.
+    private static Sprite ImportRealSprite(string sourceName, string destPath, int ppu)
+    {
+        string sourcePath = $"Assets/ArtSource/{sourceName}";
+        File.Copy(sourcePath, destPath, true);
+        AssetDatabase.ImportAsset(destPath);
+
+        var importer = (TextureImporter)AssetImporter.GetAtPath(destPath);
+        importer.textureType = TextureImporterType.Sprite;
+        importer.spritePixelsPerUnit = ppu;
+        importer.filterMode = FilterMode.Point;
+        importer.textureCompression = TextureImporterCompression.Uncompressed;
+        importer.spriteImportMode = SpriteImportMode.Single;
+        importer.mipmapEnabled = false;
+        importer.SaveAndReimport();
+
+        return AssetDatabase.LoadAssetAtPath<Sprite>(destPath);
     }
 
     private static Sprite CreateSolidSprite(string path, Color32 color, int w, int h)
