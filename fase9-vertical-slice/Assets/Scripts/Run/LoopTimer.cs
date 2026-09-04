@@ -8,6 +8,7 @@ public class LoopTimer : MonoBehaviour
 {
     [Header("Config — tunear en Sprint 3")]
     [SerializeField] private float _loopDuration = 8f;
+    private float _baseDuration = -1f;
 
     [Header("HUD (opcional)")]
     [SerializeField] private Image _timerRing;   // Image de tipo Filled para el ring circular
@@ -35,6 +36,14 @@ public class LoopTimer : MonoBehaviour
     {
         _remaining = _loopDuration;
         _running = true;
+    }
+
+    // R04 Doble Loop: los ecos completan su loop 2x más rápido (frecuencia, no velocidad
+    // de movimiento — eso es R01/R02). mult=0.5 => la mitad de duración => el doble de loops.
+    public void SetDurationMultiplier(float mult)
+    {
+        if (_baseDuration < 0f) _baseDuration = _loopDuration;
+        _loopDuration = _baseDuration * mult;
     }
 
     private void Update()
