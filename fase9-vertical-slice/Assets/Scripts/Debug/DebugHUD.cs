@@ -43,6 +43,16 @@ public class DebugHUD : MonoBehaviour
             });
             _lastAction = "F5: showing upgrade selector (forced, bypassing 60% roll)";
         }
+        if (Input.GetKeyDown(KeyCode.F6) && Services.TryGet<RoomAssembler>(out var asm1))
+        {
+            bool ok = asm1.DebugJumpToRoom("Z3_DEPENDENCY_01");
+            _lastAction = $"F6: DebugJumpToRoom(Z3_DEPENDENCY_01) -> {ok}";
+        }
+        if (Input.GetKeyDown(KeyCode.F7) && Services.TryGet<RoomAssembler>(out var asm2))
+        {
+            bool ok = asm2.DebugJumpToRoom("Z3_FRUSTRATION_01");
+            _lastAction = $"F7: DebugJumpToRoom(Z3_FRUSTRATION_01) -> {ok}";
+        }
     }
 
     private void OnGUI()

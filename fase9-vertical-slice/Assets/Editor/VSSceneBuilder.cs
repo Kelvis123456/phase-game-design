@@ -457,6 +457,13 @@ public static class VSSceneBuilder
         BuildTraversalRoom(assembler, "Z1_TIMING_14", xOffset: 2600f, length: 23f, hasGap: true, gapStart: 12f, gapWidth: 3.5f);
         BuildTraversalRoom(assembler, "Z1_TIMING_15", xOffset: 2650f, length: 21f, hasGap: true, gapStart: 10f, gapWidth: 4f);
         BuildTraversalRoom(assembler, "Z1_TIMING_16", xOffset: 2700f, length: 25f, hasGap: true, gapStart: 14f, gapWidth: 3f);
+
+        // ---- Zona 3 "Abismo": primeras salas reales de DEPENDENCY y FRUSTRATION
+        // (GDD §6.2) — antes ausentes del pool por completo. ----
+        BuildDependencyRoom(assembler, "Z3_DEPENDENCY_01", xOffset: 2750f, lever1X: 4f, door1X: 9f, lever2X: 13f, door2X: 18f, exitX: 21f);
+        BuildDependencyRoom(assembler, "Z3_DEPENDENCY_02", xOffset: 2800f, lever1X: 3f, door1X: 8f, lever2X: 12f, door2X: 17f, exitX: 20f);
+        BuildFrustrationRoom(assembler, "Z3_FRUSTRATION_01", xOffset: 2850f, hazardStartX: 5f, hazardWidth: 3f, leverX: 10f, doorX: 15f, exitX: 18f);
+        BuildFrustrationRoom(assembler, "Z3_FRUSTRATION_02", xOffset: 2900f, hazardStartX: 4f, hazardWidth: 3.5f, leverX: 9f, doorX: 14f, exitX: 17f);
     }
 
     // Sala de traversal simple: piso plano, opcionalmente con un foso que exige saltar
@@ -631,6 +638,203 @@ public static class VSSceneBuilder
         });
     }
 
+    private static readonly Color Z3BackgroundColor = new Color(0.07f, 0.02f, 0.13f);
+
+    // GDD §6.2 Zona 3 "Abismo" + §6.1: dos puertas en serie. La primera (D1) es
+    // "latching" — una vez abierta por la palanca queda abierta el resto del intento,
+    // así que resolverla no exige un eco, solo haberla cruzado antes. La segunda (D2)
+    // es momentánea (igual que SYNC): exige que alguien siga parado en L2 mientras
+    // el jugador cruza D2, lo cual solo es posible con el eco de un loop anterior
+    // sosteniéndola. La cadena real: L1 tuvo que resolverse ANTES de que el intento
+    // de sync en L2/D2 tenga sentido — de ahí "DEPENDENCY" en vez de un SYNC más.
+    private static void BuildDependencyRoom(RoomAssembler assembler, string roomId, float xOffset,
+        float lever1X, float door1X, float lever2X, float door2X, float exitX)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+        container.AddComponent<RoomVisualTheme>().backgroundColor = Z3BackgroundColor;
+
+        float floorWidth = exitX + 4f;
+        var floorGO = new GameObject("Floor");
+        floorGO.transform.SetParent(container.transform, false);
+        floorGO.transform.localPosition = new Vector3(floorWidth * 0.5f, 0f, 0f);
+        floorGO.layer = LayerMask.NameToLayer("Ground");
+        var floorSr = floorGO.AddComponent<SpriteRenderer>();
+        floorSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+        floorSr.sortingLayerName = "Terrain";
+        floorSr.drawMode = SpriteDrawMode.Tiled;
+        floorSr.size = new Vector2(floorWidth, 2f);
+        var floorCol = floorGO.AddComponent<BoxCollider2D>();
+        floorCol.size = new Vector2(floorWidth, 2f);
+
+        DoorGate BuildGate(string label, float leverX, float doorX, bool latching)
+        {
+            var leverGO = new GameObject($"Lever_{label}");
+            leverGO.transform.SetParent(container.transform, false);
+            leverGO.transform.localPosition = new Vector3(leverX, 1.5f, 0f);
+            var leverSr = leverGO.AddComponent<SpriteRenderer>();
+            leverSr.sprite = _leverOffSprite;
+            leverSr.sortingLayerName = "Hazard";
+            leverGO.AddComponent<BoxCollider2D>();
+            var lever = leverGO.AddComponent<TriggerLever>();
+            SetPrivate(lever, "_spriteOff", _leverOffSprite);
+            SetPrivate(lever, "_spriteOn", _leverOnSprite);
+
+            var doorGO = new GameObject($"Door_{label}");
+            doorGO.transform.SetParent(container.transform, false);
+            doorGO.transform.localPosition = new Vector3(doorX, 1.5f, 0f);
+            doorGO.layer = LayerMask.NameToLayer("Ground");
+            var doorSr = doorGO.AddComponent<SpriteRenderer>();
+            doorSr.sprite = _doorClosedSprite;
+            doorSr.sortingLayerName = "Hazard";
+            doorGO.transform.localScale = new Vector3(1f, 1.5f, 1f);
+            doorGO.AddComponent<BoxCollider2D>();
+            var door = doorGO.AddComponent<DoorGate>();
+            SetPrivate(door, "_spriteClosed", _doorClosedSprite);
+            SetPrivate(door, "_spriteOpen", _doorOpenSprite);
+            SetPrivate(door, "_latching", latching);
+            SetPrivate(lever, "_linkedDoor", door);
+            return door;
+        }
+
+        BuildGate("A", lever1X, door1X, latching: true);
+        var door2 = BuildGate("B", lever2X, door2X, latching: false);
+
+        var exitGO = new GameObject("RoomExit");
+        exitGO.transform.SetParent(container.transform, false);
+        exitGO.transform.localPosition = new Vector3(exitX, 1f, 0f);
+        var exitCol = exitGO.AddComponent<BoxCollider2D>();
+        exitCol.size = new Vector2(1.5f, 3f);
+        var exit = exitGO.AddComponent<RoomExit>();
+        SetPrivate(exit, "_requiredDoor", door2);
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(floorWidth * 0.4f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 3;
+        data.difficultyTier = 6;
+        data.mechanic = PrimaryMechanic.DEPENDENCY;
+        data.ecoCountRequired = 1;
+        data.hasAltSolution = false;
+        data.introRunMin = 3;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
+    }
+
+    // GDD §6.2 Zona 3 "Abismo" — FRUSTRATION ("Eco Frustrado intencional"): el motor
+    // actual reproduce ecos como posiciones puras sin colisión contra hazards (un eco
+    // nunca muere), así que la sala usa eso a propósito en vez de simularlo: el
+    // jugador aprende el timing seguro del TimedHazard arriesgando su propio cuerpo
+    // en el loop 1, y en el loop 2 debe CONFIAR en que su eco (grabado cruzando en el
+    // momento correcto) va a sostener la palanca cuando él llegue a la puerta — anticipar
+    // el comportamiento de tu eco en vez de solo compartir espacio con él (SYNC).
+    private static void BuildFrustrationRoom(RoomAssembler assembler, string roomId, float xOffset,
+        float hazardStartX, float hazardWidth, float leverX, float doorX, float exitX)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+        container.AddComponent<RoomVisualTheme>().backgroundColor = Z3BackgroundColor;
+
+        float floorWidth = exitX + 4f;
+        var floorGO = new GameObject("Floor");
+        floorGO.transform.SetParent(container.transform, false);
+        floorGO.transform.localPosition = new Vector3(floorWidth * 0.5f, 0f, 0f);
+        floorGO.layer = LayerMask.NameToLayer("Ground");
+        var floorSr = floorGO.AddComponent<SpriteRenderer>();
+        floorSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+        floorSr.sortingLayerName = "Terrain";
+        floorSr.drawMode = SpriteDrawMode.Tiled;
+        floorSr.size = new Vector2(floorWidth, 2f);
+        var floorCol = floorGO.AddComponent<BoxCollider2D>();
+        floorCol.size = new Vector2(floorWidth, 2f);
+
+        var hazardGO = new GameObject("TimedHazard");
+        hazardGO.transform.SetParent(container.transform, false);
+        hazardGO.transform.localPosition = new Vector3(hazardStartX + hazardWidth * 0.5f, 1f, 0f);
+        hazardGO.layer = LayerMask.NameToLayer("Hazard");
+        var hazardSr = hazardGO.AddComponent<SpriteRenderer>();
+        hazardSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/hazard.png");
+        hazardSr.sortingLayerName = "Hazard";
+        hazardSr.drawMode = SpriteDrawMode.Tiled;
+        hazardSr.size = new Vector2(hazardWidth, 1f);
+        var hazardCol = hazardGO.AddComponent<BoxCollider2D>();
+        hazardCol.size = new Vector2(hazardWidth, 1f);
+        hazardGO.AddComponent<TimedHazard>();
+
+        var leverGO = new GameObject("Lever");
+        leverGO.transform.SetParent(container.transform, false);
+        leverGO.transform.localPosition = new Vector3(leverX, 1.5f, 0f);
+        var leverSr = leverGO.AddComponent<SpriteRenderer>();
+        leverSr.sprite = _leverOffSprite;
+        leverSr.sortingLayerName = "Hazard";
+        leverGO.AddComponent<BoxCollider2D>();
+        var lever = leverGO.AddComponent<TriggerLever>();
+        SetPrivate(lever, "_spriteOff", _leverOffSprite);
+        SetPrivate(lever, "_spriteOn", _leverOnSprite);
+
+        var doorGO = new GameObject("Door");
+        doorGO.transform.SetParent(container.transform, false);
+        doorGO.transform.localPosition = new Vector3(doorX, 1.5f, 0f);
+        doorGO.layer = LayerMask.NameToLayer("Ground");
+        var doorSr = doorGO.AddComponent<SpriteRenderer>();
+        doorSr.sprite = _doorClosedSprite;
+        doorSr.sortingLayerName = "Hazard";
+        doorGO.transform.localScale = new Vector3(1f, 1.5f, 1f);
+        doorGO.AddComponent<BoxCollider2D>();
+        var door = doorGO.AddComponent<DoorGate>();
+        SetPrivate(door, "_spriteClosed", _doorClosedSprite);
+        SetPrivate(door, "_spriteOpen", _doorOpenSprite);
+        SetPrivate(lever, "_linkedDoor", door);
+
+        var exitGO = new GameObject("RoomExit");
+        exitGO.transform.SetParent(container.transform, false);
+        exitGO.transform.localPosition = new Vector3(exitX, 1f, 0f);
+        var exitCol = exitGO.AddComponent<BoxCollider2D>();
+        exitCol.size = new Vector2(1.5f, 3f);
+        var exit = exitGO.AddComponent<RoomExit>();
+        SetPrivate(exit, "_requiredDoor", door);
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(floorWidth * 0.4f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 3;
+        data.difficultyTier = 7;
+        data.mechanic = PrimaryMechanic.FRUSTRATION;
+        data.ecoCountRequired = 1;
+        data.hasAltSolution = false;
+        data.introRunMin = 3;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
+    }
+
     public static void BuildPlayerExe()
     {
         Debug.Log("[VSSceneBuilder] Building Windows standalone player...");
@@ -765,6 +969,15 @@ public static class VSSceneBuilder
         var prop = so.FindProperty(fieldName);
         if (prop == null) { Debug.LogError($"[VSSceneBuilder] Field '{fieldName}' not found on {target.GetType().Name}"); return; }
         prop.intValue = value.value;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void SetPrivate(Object target, string fieldName, bool value)
+    {
+        var so = new SerializedObject(target);
+        var prop = so.FindProperty(fieldName);
+        if (prop == null) { Debug.LogError($"[VSSceneBuilder] Field '{fieldName}' not found on {target.GetType().Name}"); return; }
+        prop.boolValue = value;
         so.ApplyModifiedPropertiesWithoutUndo();
     }
 }
