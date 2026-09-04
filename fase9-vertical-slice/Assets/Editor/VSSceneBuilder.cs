@@ -468,6 +468,10 @@ public static class VSSceneBuilder
         BuildDependencyRoom(assembler, "Z3_DEPENDENCY_02", xOffset: 2800f, lever1X: 3f, door1X: 8f, lever2X: 12f, door2X: 17f, exitX: 20f);
         BuildFrustrationRoom(assembler, "Z3_FRUSTRATION_01", xOffset: 2850f, hazardStartX: 5f, hazardWidth: 3f, leverX: 10f, doorX: 15f, exitX: 18f);
         BuildFrustrationRoom(assembler, "Z3_FRUSTRATION_02", xOffset: 2900f, hazardStartX: 4f, hazardWidth: 3.5f, leverX: 9f, doorX: 14f, exitX: 17f);
+
+        // ---- Boss 1 "El Espejo Fragmentado" (GDD §8.2, Fase 1) — slot fijo al final de
+        // cada run, no sale del sorteo aleatorio del pool. ----
+        BuildBossRoom(assembler, "Z1_BOSS_ESPEJO_FRAGMENTADO", xOffset: 2950f);
     }
 
     // Sala de traversal simple: piso plano, opcionalmente con un foso que exige saltar
@@ -839,6 +843,104 @@ public static class VSSceneBuilder
         });
     }
 
+    // GDD §8.2 Boss 1 "El Espejo Fragmentado" (Zona 1), Fase 1 ("Primeros Reflejos"):
+    // 3 paneles de espejo (E1/E2/E3), cada uno con su palanca — el jugador debe leer el
+    // oscilador de cada panel (8s [VS], mitad alineado/mitad no) y coordinar 2 ecos +
+    // su propio cuerpo para tener los 3 activos a la vez, luego pararse en el centro
+    // 1s continuo. Fases 2-3 (contrapeso E4/E2, 5 paneles) quedan fuera de este pase.
+    private static void BuildBossRoom(RoomAssembler assembler, string roomId, float xOffset)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+        container.AddComponent<RoomVisualTheme>().backgroundColor = new Color(0.10f, 0.06f, 0.03f);
+
+        const float e1X = 4f, e2X = 10f, centerX = 16f, e3X = 22f, floorWidth = 28f;
+
+        var floorGO = new GameObject("Floor");
+        floorGO.transform.SetParent(container.transform, false);
+        floorGO.transform.localPosition = new Vector3(floorWidth * 0.5f, 0f, 0f);
+        floorGO.layer = LayerMask.NameToLayer("Ground");
+        var floorSr = floorGO.AddComponent<SpriteRenderer>();
+        floorSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+        floorSr.sortingLayerName = "Terrain";
+        floorSr.drawMode = SpriteDrawMode.Tiled;
+        floorSr.size = new Vector2(floorWidth, 2f);
+        var floorCol = floorGO.AddComponent<BoxCollider2D>();
+        floorCol.size = new Vector2(floorWidth, 2f);
+
+        var panels = new System.Collections.Generic.List<MirrorPanel>();
+        void BuildPanelLever(string label, float x)
+        {
+            var leverGO = new GameObject($"Lever_{label}");
+            leverGO.transform.SetParent(container.transform, false);
+            leverGO.transform.localPosition = new Vector3(x, 1.5f, 0f);
+            var leverSr = leverGO.AddComponent<SpriteRenderer>();
+            leverSr.sprite = _leverOffSprite;
+            leverSr.sortingLayerName = "Hazard";
+            leverGO.AddComponent<BoxCollider2D>();
+            var lever = leverGO.AddComponent<TriggerLever>();
+            SetPrivate(lever, "_spriteOff", _leverOffSprite);
+            SetPrivate(lever, "_spriteOn", _leverOnSprite);
+
+            var panelGO = new GameObject($"Panel_{label}");
+            panelGO.transform.SetParent(container.transform, false);
+            panelGO.transform.localPosition = new Vector3(x, 3.2f, 0f);
+            var panelSr = panelGO.AddComponent<SpriteRenderer>();
+            panelSr.sprite = _doorClosedSprite;
+            panelSr.sortingLayerName = "Hazard";
+            var panel = panelGO.AddComponent<MirrorPanel>();
+            SetPrivate(panel, "_lever", lever);
+            panels.Add(panel);
+        }
+
+        BuildPanelLever("E1", e1X);
+        BuildPanelLever("E2", e2X);
+        BuildPanelLever("E3", e3X);
+
+        var centerGO = new GameObject("CenterTrigger");
+        centerGO.transform.SetParent(container.transform, false);
+        centerGO.transform.localPosition = new Vector3(centerX, 1f, 0f);
+        var centerCol = centerGO.AddComponent<BoxCollider2D>();
+        centerCol.size = new Vector2(1f, 3f);
+        var centerTrigger = centerGO.AddComponent<BossCenterTrigger>();
+        var centerSr = centerGO.AddComponent<SpriteRenderer>();
+        centerSr.sprite = _leverOnSprite;
+        centerSr.sortingLayerName = "Hazard";
+        centerSr.color = new Color(1f, 0.9f, 0.4f, 0.6f);
+
+        var bossGO = new GameObject("BossController");
+        bossGO.transform.SetParent(container.transform, false);
+        var boss = bossGO.AddComponent<BossController>();
+        SetPrivateField(boss, "_panels", panels.ToArray());
+        SetPrivate(boss, "_centerTrigger", centerTrigger);
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(floorWidth * 0.4f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 1;
+        data.difficultyTier = 8;
+        data.mechanic = PrimaryMechanic.SYNC;
+        data.ecoCountRequired = 2;
+        data.hasAltSolution = false;
+        data.introRunMin = 1;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterBossRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
+    }
+
     public static void BuildPlayerExe()
     {
         Debug.Log("[VSSceneBuilder] Building Windows standalone player...");
@@ -983,5 +1085,15 @@ public static class VSSceneBuilder
         if (prop == null) { Debug.LogError($"[VSSceneBuilder] Field '{fieldName}' not found on {target.GetType().Name}"); return; }
         prop.boolValue = value;
         so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    // Para tipos que SerializedProperty no cubre bien acá (arrays de componentes) —
+    // reflexión directa en vez de un overload de SerializedObject por cada caso.
+    private static void SetPrivateField(object target, string fieldName, object value)
+    {
+        var field = target.GetType().GetField(fieldName,
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (field == null) { Debug.LogError($"[VSSceneBuilder] Field '{fieldName}' not found on {target.GetType().Name}"); return; }
+        field.SetValue(target, value);
     }
 }
