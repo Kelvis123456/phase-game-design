@@ -75,8 +75,9 @@ public class EchoManager : MonoBehaviour
         var recording = _recorder.GetRecording(duration);
         if (recording.Length == 0) return;
 
+        float speedMultiplier = Services.TryGet<RunManager>(out var run) ? run.ActiveUpgrades.echoSpeedMultiplier : 1f;
         var echo = RentFromPool();
-        echo.Initialize(recording, EchoColors[_activeCount], _activeCount);
+        echo.Initialize(recording, EchoColors[_activeCount], _activeCount, speedMultiplier);
         _slots[_activeCount] = echo;
         _activeCount++;
     }

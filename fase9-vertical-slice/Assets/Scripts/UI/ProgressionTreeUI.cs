@@ -91,9 +91,22 @@ public class ProgressionTreeUI : MonoBehaviour
         balanceRt.anchoredPosition = new Vector2(0f, -60f);
 
         // Grid simple: una columna por rama (A/B/C/D), filas por nodo dentro de la rama.
+        // La altura de fila se calcula según la rama MÁS LARGA (hoy Rama C, 10 nodos) para
+        // que ninguna columna se salga de la ventana sin importar cuántos nodos tenga cada
+        // rama — antes esto estaba hardcodeado a 60px asumiendo ramas de 2-3 nodos de muestra,
+        // y con las 10 filas reales de Rama C el último nodo quedaba cortado fuera de pantalla.
         string[] branches = { "A", "B", "C", "D" };
         float colWidth = 300f;
         float startX = -((branches.Length - 1) * colWidth) / 2f;
+
+        int maxRows = 1;
+        foreach (var b in branches)
+            maxRows = Mathf.Max(maxRows, ProgressionSystem.NodeTable.FindAll(n => n.branch == b).Count);
+
+        const float gridTop = -150f;
+        const float gridBottom = -670f; // deja espacio para el hint "TAB para cerrar" debajo
+        float rowHeight = Mathf.Clamp((gridBottom - gridTop) / -maxRows, 40f, 60f);
+        float btnHeight = rowHeight - 10f;
 
         for (int col = 0; col < branches.Length; col++)
         {
@@ -126,8 +139,8 @@ public class ProgressionTreeUI : MonoBehaviour
                 btnRt.anchorMin = new Vector2(0.5f, 1f);
                 btnRt.anchorMax = new Vector2(0.5f, 1f);
                 btnRt.pivot = new Vector2(0.5f, 1f);
-                btnRt.sizeDelta = new Vector2(260f, 50f);
-                btnRt.anchoredPosition = new Vector2(startX + col * colWidth, -150f - row * 60f);
+                btnRt.sizeDelta = new Vector2(260f, btnHeight);
+                btnRt.anchoredPosition = new Vector2(startX + col * colWidth, gridTop - row * rowHeight);
 
                 var labelGO = new GameObject("Label");
                 labelGO.transform.SetParent(btnGO.transform, false);

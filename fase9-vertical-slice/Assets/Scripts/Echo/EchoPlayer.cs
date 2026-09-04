@@ -27,11 +27,13 @@ public class EchoPlayer : MonoBehaviour
     private TimeManager _timeManager;
     private Material _mat;
     private int _slotIndex;
+    private float _speedMultiplier = 1f;
 
-    public void Initialize(InputRecorder.Snapshot[] recording, Color color, int slotIndex)
+    public void Initialize(InputRecorder.Snapshot[] recording, Color color, int slotIndex, float speedMultiplier = 1f)
     {
         _recording = recording;
         _slotIndex = slotIndex;
+        _speedMultiplier = speedMultiplier;
         _frameIndex = 0;
         _frameTimer = 0f;
         _timeManager = Services.Get<TimeManager>();
@@ -49,8 +51,8 @@ public class EchoPlayer : MonoBehaviour
     {
         if (_recording == null || _recording.Length == 0) return;
 
-        // Echo siempre corre a velocidad 1.0x — ignorar bullet-time
-        _frameTimer += _timeManager.Delta(TimeManager.Layer.Echo);
+        // Echo siempre ignora bullet-time; R01/R02 (echoSpeedMultiplier) sí lo escalan.
+        _frameTimer += _timeManager.Delta(TimeManager.Layer.Echo) * _speedMultiplier;
 
         if (_frameTimer < FRAME_DURATION) return;
         _frameTimer -= FRAME_DURATION;

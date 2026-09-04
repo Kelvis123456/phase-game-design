@@ -23,6 +23,9 @@ public class TimeManager : MonoBehaviour
     private float[] _scales = { 1f, 1f, 1f, 1f }; // World, Player, Echo, UI
     private float _playerTarget = 1f;
 
+    // Run upgrades (RunUpgradeEffects) — reseteados por RunManager en cada StartRun.
+    private float _deactivateSmoothBonus = 0f; // R03 Bullet Extendido: más lento = más suave
+
     private Vignette _vignette;
     private ChromaticAberration _chromatic;
 
@@ -39,7 +42,12 @@ public class TimeManager : MonoBehaviour
     private void Update()
     {
         float dt = Time.deltaTime;
-        _scales[(int)Layer.Player] = Mathf.Lerp(_scales[(int)Layer.Player], _playerTarget, _smoothSpeed * dt);
+        // Al activar bullet-time usa _smoothSpeed normal; al DESACTIVAR (volver a 1x),
+        // R03 Bullet Extendido reduce la velocidad de la interpolación — más lento acá
+        // significa una transición más suave, no más rápida.
+        bool deactivating = _playerTarget >= 1f;
+        float speed = deactivating ? Mathf.Max(1f, _smoothSpeed - _deactivateSmoothBonus) : _smoothSpeed;
+        _scales[(int)Layer.Player] = Mathf.Lerp(_scales[(int)Layer.Player], _playerTarget, speed * dt);
 
         UpdatePostProcessing();
 
@@ -62,6 +70,13 @@ public class TimeManager : MonoBehaviour
     {
         _playerTarget = active ? _bulletTimeScale : 1f;
     }
+
+    // R03 Bullet Extendido.
+    public void SetDeactivateSmoothBonus(float bonus) => _deactivateSmoothBonus = bonus;
+
+    // R11 Mundo Lento — Layer.World es lo que corre el LoopTimer, así que esto sí
+    // "facilita el timing sin afectar ecos" (los ecos corren siempre en Layer.Echo).
+    public void SetWorldScale(float scale) => _scales[(int)Layer.World] = scale;
 
     public float Delta(Layer layer) => _scales[(int)layer] * Time.deltaTime;
     public float Scale(Layer layer) => _scales[(int)layer];
