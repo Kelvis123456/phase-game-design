@@ -92,6 +92,12 @@ public class RoomAssembler : MonoBehaviour
         if (_camera != null && next.cameraAnchor != null)
             _camera.transform.position = new Vector3(next.cameraAnchor.position.x, next.cameraAnchor.position.y, _camera.transform.position.z);
 
+        if (_camera != null)
+        {
+            var theme = next.container.GetComponent<RoomVisualTheme>();
+            if (theme != null) _camera.backgroundColor = theme.backgroundColor;
+        }
+
         _echoManager.ClearAllEchos();
         _loopTimer.StartLoop();
     }
@@ -124,6 +130,21 @@ public class RoomAssembler : MonoBehaviour
         {
             LoadNext();
         }
+    }
+
+    // Ayuda de QA: saltar directo a una sala del pool por id, sin pasar por el sorteo
+    // aleatorio de AssembleRun (útil para probar salas raras/tardías del pool, como las
+    // de Zona 3, sin jugar decenas de runs esperando que salgan por azar).
+    public bool DebugJumpToRoom(string roomId)
+    {
+        var target = _pool.Find(r => r.data.roomId == roomId);
+        if (target == null) return false;
+
+        _runSequence.Clear();
+        _runSequence.Add(target);
+        _currentIndex = -1;
+        LoadNext();
+        return true;
     }
 
     public RoomData CurrentRoom => (_currentIndex >= 0 && _currentIndex < _runSequence.Count) ? _runSequence[_currentIndex].data : null;

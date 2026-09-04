@@ -13,6 +13,14 @@ public class DoorGate : MonoBehaviour
     [SerializeField] private Sprite _spriteClosed;
     [SerializeField] private Sprite _spriteOpen;
 
+    // Fase 10 M2.4 (GDD §6.2 Zona 3 — DEPENDENCY): una vez abierta, se queda abierta
+    // el resto del loop en vez de re-cerrarse al soltar la palanca. Esto es lo que
+    // permite encadenar dos puertas en serie: el mismo eco que abrió la primera ya
+    // siguió de largo cuando llega a la segunda, así que la primera debe quedarse
+    // resuelta por sí sola — sin esto, una cadena de puertas momentáneas es imposible
+    // de cruzar con un solo cuerpo.
+    [SerializeField] private bool _latching;
+
     private readonly HashSet<TriggerLever> _holding = new HashSet<TriggerLever>();
     private Collider2D _blocker;
 
@@ -26,6 +34,8 @@ public class DoorGate : MonoBehaviour
 
     public void SetHeld(TriggerLever lever, bool held)
     {
+        if (_latching && IsOpen) return;
+
         if (held) _holding.Add(lever);
         else _holding.Remove(lever);
 
