@@ -322,6 +322,10 @@ public static class VSSceneBuilder
         var mainMenu = mainMenuGO.AddComponent<MainMenuUI>();
         SetPrivate(mainMenu, "_background", keyartSprite);
 
+        var cinematicGO = new GameObject("TercerEspejoCinematic");
+        var cinematic = cinematicGO.AddComponent<TercerEspejoCinematic>();
+        SetPrivate(cinematic, "_echoSprite", playerSprite);
+
         var roomControllerGO = new GameObject("VSRoomController");
         var roomController = roomControllerGO.AddComponent<VSRoomController>();
         SetPrivate(roomController, "_playerSpawnPoint", spawnGO.transform);

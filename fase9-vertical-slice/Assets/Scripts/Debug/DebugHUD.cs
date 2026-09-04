@@ -53,6 +53,11 @@ public class DebugHUD : MonoBehaviour
             bool ok = asm2.DebugJumpToRoom("Z3_FRUSTRATION_01");
             _lastAction = $"F7: DebugJumpToRoom(Z3_FRUSTRATION_01) -> {ok}";
         }
+        if (Input.GetKeyDown(KeyCode.F8) && Services.TryGet<TercerEspejoCinematic>(out var cine))
+        {
+            cine.Play();
+            _lastAction = "F8: TercerEspejoCinematic.Play() (forzado, sin gastar PC)";
+        }
     }
 
     private void OnGUI()

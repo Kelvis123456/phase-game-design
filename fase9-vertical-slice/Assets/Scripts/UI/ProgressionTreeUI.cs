@@ -181,8 +181,13 @@ public class ProgressionTreeUI : MonoBehaviour
 
     private void OnNodeClicked(string nodeId)
     {
-        _progression.TryUnlock(nodeId);
+        bool unlocked = _progression.TryUnlock(nodeId);
         Refresh();
+
+        // GDD §6.3: el desbloqueo de A2 (Tercer Espejo) merece una cinemática especial,
+        // no solo el botón cambiando de color como cualquier otro nodo.
+        if (unlocked && nodeId == "A2" && Services.TryGet<TercerEspejoCinematic>(out var cinematic))
+            cinematic.Play();
     }
 
     private void Refresh()
