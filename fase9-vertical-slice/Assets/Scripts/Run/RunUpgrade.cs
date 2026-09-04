@@ -28,4 +28,7 @@ public class RunUpgradeEffects
     public float worldSlowMultiplier = 1f;        // R11 Mundo Lento
     public float echoSpeedMultiplier = 1f;        // R01 Eco Veloz / R02 Eco Lento
     public float loopDurationMultiplier = 1f;     // R04 Doble Loop
+    public bool bonusRoomRequested = false;       // R07 Sala Bonus (se consume una vez aplicado)
+    public bool roomRestartAvailable = false;     // R08 Reinicio de Sala (se consume al usarse)
+    public bool duplicateFirstEcho = false;       // R09 Eco Duplicado
 }

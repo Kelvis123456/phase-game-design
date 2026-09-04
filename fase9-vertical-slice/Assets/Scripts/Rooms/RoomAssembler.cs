@@ -118,6 +118,24 @@ public class RoomAssembler : MonoBehaviour
             runBoss.EnterBossFight();
     }
 
+    // R07 Sala Bonus (GDD §7.3): agrega una 5ta sala de dificultad baja a la run YA EN
+    // CURSO. Se inserta justo antes del boss (o al final si no hay boss) — nunca antes
+    // de _currentIndex, para no alterar la sala que el jugador ya está jugando.
+    public void InjectBonusRoom()
+    {
+        var usedIds = new HashSet<string>();
+        foreach (var r in _runSequence) usedIds.Add(r.data.roomId);
+
+        var candidates = _pool.FindAll(r => r.data.mechanic == PrimaryMechanic.SOLO
+            && r.data.difficultyTier <= 1 && !usedIds.Contains(r.data.roomId));
+        if (candidates.Count == 0) return;
+
+        var bonusRoom = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        int insertAt = _bossRoom != null ? _runSequence.Count - 1 : _runSequence.Count;
+        insertAt = Mathf.Max(insertAt, _currentIndex + 1);
+        _runSequence.Insert(insertAt, bonusRoom);
+    }
+
     // Llamado por BossController cuando se cumple la condición de victoria del boss
     // (todos los paneles activos + jugador en el centro por _requiredHoldTime). A
     // diferencia de OnRoomCleared, esto NO pasa por RunManager.RoomCleared() (que
@@ -176,6 +194,7 @@ public class RoomAssembler : MonoBehaviour
     }
 
     public RoomData CurrentRoom => (_currentIndex >= 0 && _currentIndex < _runSequence.Count) ? _runSequence[_currentIndex].data : null;
+    public int RunSequenceCount => _runSequence.Count;
 
     // El controlador de muerte/reset (VSRoomController) necesita saber DÓNDE resetear al
     // jugador — no siempre es la Room 0 original. Sin esto, morir en cualquier otra sala

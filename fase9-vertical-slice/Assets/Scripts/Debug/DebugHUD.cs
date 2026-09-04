@@ -63,6 +63,20 @@ public class DebugHUD : MonoBehaviour
             bool ok = asm3.DebugJumpToRoom("Z1_BOSS_ESPEJO_FRAGMENTADO");
             _lastAction = $"F9: DebugJumpToRoom(Z1_BOSS_ESPEJO_FRAGMENTADO) -> {ok}";
         }
+        if (Input.GetKeyDown(KeyCode.F10)) ForceApplyUpgrade("R07", "F10");
+        if (Input.GetKeyDown(KeyCode.F11)) ForceApplyUpgrade("R08", "F11");
+        if (Input.GetKeyDown(KeyCode.F12)) ForceApplyUpgrade("R09", "F12");
+    }
+
+    // Ayuda de QA: aplicar un upgrade específico por id sin pasar por el sorteo 2-de-N
+    // del selector — necesario para probar R07/R08/R09 de forma determinista.
+    private void ForceApplyUpgrade(string id, string key)
+    {
+        if (!Services.TryGet<RunManager>(out var run)) return;
+        var upgrade = RunManager.UpgradeTable.Find(u => u.id == id);
+        if (upgrade == null) { _lastAction = $"{key}: upgrade {id} no encontrado"; return; }
+        run.ApplyUpgrade(upgrade);
+        _lastAction = $"{key}: ApplyUpgrade({id}) forzado";
     }
 
     private void OnGUI()
@@ -91,9 +105,10 @@ public class DebugHUD : MonoBehaviour
         string runStateText = Services.TryGet<RunManager>(out var run) ? run.CurrentState.ToString() : "NULL";
         string echoActiveText = Services.TryGet<EchoManager>(out var em) ? em.ActiveCount.ToString() : "NULL";
         string roomText = Services.TryGet<RoomAssembler>(out var asm) && asm.CurrentRoom != null ? asm.CurrentRoom.roomId : "(none)";
+        string seqCountText = Services.TryGet<RoomAssembler>(out var asmSeq) ? asmSeq.RunSequenceCount.ToString() : "?";
 
         string upgradesText = Services.TryGet<RunManager>(out var runU)
-            ? $"pcBonus={runU.ActiveUpgrades.pcBonusOnComplete} btBonus={runU.ActiveUpgrades.bulletTimeDeactivateBonus:F2} worldSlow={runU.ActiveUpgrades.worldSlowMultiplier:F2}"
+            ? $"pcBonus={runU.ActiveUpgrades.pcBonusOnComplete} btBonus={runU.ActiveUpgrades.bulletTimeDeactivateBonus:F2} worldSlow={runU.ActiveUpgrades.worldSlowMultiplier:F2} echoSpeed={runU.ActiveUpgrades.echoSpeedMultiplier:F2} loopMult={runU.ActiveUpgrades.loopDurationMultiplier:F2} roomRestart={runU.ActiveUpgrades.roomRestartAvailable} dupEcho={runU.ActiveUpgrades.duplicateFirstEcho}"
             : "NULL";
 
         string bossText = Services.TryGet<BossController>(out var boss)
@@ -111,9 +126,9 @@ public class DebugHUD : MonoBehaviour
         GUI.Label(new Rect(15, 178, 680, 24), $"groundCollider bounds={boundsText} enabled={enabledText}{compositePathCount}", style);
         GUI.Label(new Rect(15, 202, 680, 24), $"groundMask={groundMask.value}", style);
         GUI.Label(new Rect(15, 226, 680, 24), $"PhaseCrystals={crystalsText}  A2unlocked={a2Text}  echoActive={echoActiveText}", style);
-        GUI.Label(new Rect(15, 250, 680, 24), $"RunState={runStateText}  Room={roomText}", style);
+        GUI.Label(new Rect(15, 250, 680, 24), $"RunState={runStateText}  Room={roomText}  seqCount={seqCountText}", style);
         GUI.Label(new Rect(15, 274, 680, 24), $"[F2 earn][F3 unlock A2][F4 start run] last: {_lastAction}", style);
-        GUI.Label(new Rect(15, 298, 680, 24), $"ActiveUpgrades: {upgradesText}", style);
+        GUI.Label(new Rect(15, 298, 880, 24), $"ActiveUpgrades: {upgradesText}", style);
         GUI.Label(new Rect(15, 322, 880, 90), $"Boss: {bossText}", style);
     }
 }

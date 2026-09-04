@@ -19,6 +19,7 @@ public class EchoManager : MonoBehaviour
     private EchoPlayer[] _slots = new EchoPlayer[5];
     private int _activeCount;
     private readonly Queue<EchoPlayer> _pool = new Queue<EchoPlayer>();
+    private bool _hasDuplicatedFirstEchoThisRun;
 
     private static readonly Color[] EchoColors =
     {
@@ -75,22 +76,43 @@ public class EchoManager : MonoBehaviour
         var recording = _recorder.GetRecording(duration);
         if (recording.Length == 0) return;
 
-        float speedMultiplier = Services.TryGet<RunManager>(out var run) ? run.ActiveUpgrades.echoSpeedMultiplier : 1f;
+        bool isFirstEchoOfRun = !_hasDuplicatedFirstEchoThisRun && _activeCount == 0;
+        Services.TryGet<RunManager>(out var run);
+        float speedMultiplier = run != null ? run.ActiveUpgrades.echoSpeedMultiplier : 1f;
+
         var echo = RentFromPool();
         echo.Initialize(recording, EchoColors[_activeCount], _activeCount, speedMultiplier);
         _slots[_activeCount] = echo;
         _activeCount++;
+
+        // R09 Eco Duplicado: el PRIMER eco de la run entera (no de cada sala) se duplica
+        // — un segundo eco con la MISMA grabación ocupa el siguiente slot de inmediato.
+        // Se sale del límite normal de _maxEchos a propósito (por eso "solo en runs
+        // difíciles" en el GDD) y solo puede pasar una vez por run.
+        if (isFirstEchoOfRun && run != null && run.ActiveUpgrades.duplicateFirstEcho && _activeCount < _slots.Length)
+        {
+            _hasDuplicatedFirstEchoThisRun = true;
+            var dupEcho = RentFromPool();
+            dupEcho.Initialize(recording, EchoColors[_activeCount], _activeCount, speedMultiplier);
+            _slots[_activeCount] = dupEcho;
+            _activeCount++;
+        }
     }
 
+    public void ResetForNewRun() => _hasDuplicatedFirstEchoThisRun = false;
+
+    // Usa _activeCount (no _maxEchos) para el shift — R09 Eco Duplicado puede empujar
+    // _activeCount por encima de _maxEchos temporalmente (a propósito), y este método
+    // debe poder desalojar de ahí sin dejar un slot huérfano sin limpiar.
     private void EvictOldest()
     {
         _slots[0]?.Die();
-        for (int i = 0; i < _maxEchos - 1; i++)
+        for (int i = 0; i < _activeCount - 1; i++)
         {
             _slots[i] = _slots[i + 1];
             _slots[i]?.UpdateSlot(i);
         }
-        _slots[_maxEchos - 1] = null;
+        _slots[_activeCount - 1] = null;
         _activeCount--;
     }
 
