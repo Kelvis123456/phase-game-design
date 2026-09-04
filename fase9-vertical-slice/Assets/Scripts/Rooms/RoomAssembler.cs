@@ -14,11 +14,13 @@ public class RoomInstance
     public GameObject container;
     public Transform spawnPoint;
     public Transform cameraAnchor;
+    public bool isBoss;
 }
 
 public class RoomAssembler : MonoBehaviour
 {
     [SerializeField] private List<RoomInstance> _pool = new List<RoomInstance>();
+    [SerializeField] private RoomInstance _bossRoom;
     [SerializeField] private Camera _camera;
     [SerializeField] private PlayerController _player;
     [SerializeField] private EchoManager _echoManager;
@@ -32,6 +34,15 @@ public class RoomAssembler : MonoBehaviour
     public void RegisterRoom(RoomInstance instance)
     {
         _pool.Add(instance);
+        instance.container.SetActive(false);
+    }
+
+    // GDD §7.1: "4 salas estándar + 1 sala de boss determinada por zona activa" — el
+    // boss no sale del sorteo aleatorio del pool, es un slot fijo al final de la run.
+    public void RegisterBossRoom(RoomInstance instance)
+    {
+        instance.isBoss = true;
+        _bossRoom = instance;
         instance.container.SetActive(false);
     }
 
@@ -64,6 +75,8 @@ public class RoomAssembler : MonoBehaviour
             lastMechanic = pick.data.mechanic;
             remaining.Remove(pick);
         }
+
+        if (_bossRoom != null) _runSequence.Add(_bossRoom);
 
         _currentIndex = -1;
         LoadNext();
@@ -100,6 +113,20 @@ public class RoomAssembler : MonoBehaviour
 
         _echoManager.ClearAllEchos();
         _loopTimer.StartLoop();
+
+        if (next.isBoss && Services.TryGet<RunManager>(out var runBoss))
+            runBoss.EnterBossFight();
+    }
+
+    // Llamado por BossController cuando se cumple la condición de victoria del boss
+    // (todos los paneles activos + jugador en el centro por _requiredHoldTime). A
+    // diferencia de OnRoomCleared, esto NO pasa por RunManager.RoomCleared() (que
+    // requiere CurrentState==RoomActive; el boss ya transicionó a BossFight) ni ofrece
+    // upgrade de run — es la última sala, la run termina aquí.
+    public void OnBossDefeated()
+    {
+        if (Services.TryGet<RunManager>(out var run))
+            run.CompleteRun(bossDefeated: true);
     }
 
     public void OnRoomCleared()
@@ -138,6 +165,7 @@ public class RoomAssembler : MonoBehaviour
     public bool DebugJumpToRoom(string roomId)
     {
         var target = _pool.Find(r => r.data.roomId == roomId);
+        if (target == null && _bossRoom != null && _bossRoom.data.roomId == roomId) target = _bossRoom;
         if (target == null) return false;
 
         _runSequence.Clear();

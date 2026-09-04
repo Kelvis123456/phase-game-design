@@ -58,6 +58,11 @@ public class DebugHUD : MonoBehaviour
             cine.Play();
             _lastAction = "F8: TercerEspejoCinematic.Play() (forzado, sin gastar PC)";
         }
+        if (Input.GetKeyDown(KeyCode.F9) && Services.TryGet<RoomAssembler>(out var asm3))
+        {
+            bool ok = asm3.DebugJumpToRoom("Z1_BOSS_ESPEJO_FRAGMENTADO");
+            _lastAction = $"F9: DebugJumpToRoom(Z1_BOSS_ESPEJO_FRAGMENTADO) -> {ok}";
+        }
     }
 
     private void OnGUI()
@@ -91,7 +96,11 @@ public class DebugHUD : MonoBehaviour
             ? $"pcBonus={runU.ActiveUpgrades.pcBonusOnComplete} btBonus={runU.ActiveUpgrades.bulletTimeDeactivateBonus:F2} worldSlow={runU.ActiveUpgrades.worldSlowMultiplier:F2}"
             : "NULL";
 
-        GUI.Box(new Rect(5, 5, 700, 344), "");
+        string bossText = Services.TryGet<BossController>(out var boss)
+            ? $"allPanels={boss.AllPanelsActive} holdProgress={boss.HoldProgress:F2}\n{boss.DebugPanelStates()}"
+            : "NULL";
+
+        GUI.Box(new Rect(5, 5, 900, 420), "");
         GUI.Label(new Rect(15, 10, 680, 24), $"frame={_frameCount} t={Time.time:F2} dt={Time.deltaTime:F4}", style);
         GUI.Label(new Rect(15, 34, 680, 24), $"player.pos={posText}", style);
         GUI.Label(new Rect(15, 58, 680, 24), $"rb.pos={rbText}", style);
@@ -105,5 +114,6 @@ public class DebugHUD : MonoBehaviour
         GUI.Label(new Rect(15, 250, 680, 24), $"RunState={runStateText}  Room={roomText}", style);
         GUI.Label(new Rect(15, 274, 680, 24), $"[F2 earn][F3 unlock A2][F4 start run] last: {_lastAction}", style);
         GUI.Label(new Rect(15, 298, 680, 24), $"ActiveUpgrades: {upgradesText}", style);
+        GUI.Label(new Rect(15, 322, 880, 90), $"Boss: {bossText}", style);
     }
 }
