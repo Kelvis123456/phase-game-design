@@ -21,6 +21,7 @@ public class RoomAssembler : MonoBehaviour
 {
     [SerializeField] private List<RoomInstance> _pool = new List<RoomInstance>();
     [SerializeField] private RoomInstance _bossRoom;
+    [SerializeField] private List<RoomInstance> _tutorialRooms = new List<RoomInstance>();
     [SerializeField] private Camera _camera;
     [SerializeField] private PlayerController _player;
     [SerializeField] private EchoManager _echoManager;
@@ -28,6 +29,10 @@ public class RoomAssembler : MonoBehaviour
 
     private List<RoomInstance> _runSequence = new List<RoomInstance>();
     private int _currentIndex = -1;
+    // GDD §5 Tutorial: las 4 salas del tutorial NO limpian ecos entre sí — el eco de la
+    // Sala 0 tiene que seguir vivo cuando el jugador llega a la Sala 1. Toda sala normal
+    // deja esto en false (comportamiento sin cambios).
+    private bool _carryEchoesAcrossRooms;
 
     private void Awake() => Services.Register(this);
 
@@ -46,6 +51,33 @@ public class RoomAssembler : MonoBehaviour
         instance.container.SetActive(false);
     }
 
+    // GDD §5: las salas del tutorial no salen del pool aleatorio — son una secuencia
+    // fija, en orden, solo para la primera run del jugador. Se registran aparte para
+    // que AssembleRun (el sorteo normal) nunca las toque.
+    public void RegisterTutorialRoom(RoomInstance instance)
+    {
+        _tutorialRooms.Add(instance);
+        instance.container.SetActive(false);
+    }
+
+    public void AssembleTutorialRun()
+    {
+        _runSequence.Clear();
+        _runSequence.AddRange(_tutorialRooms);
+        _carryEchoesAcrossRooms = true;
+
+        if (Services.TryGet<EchoManager>(out var echoManager))
+            echoManager.SetTemporaryMaxEchos(3);
+        // Loop más corto en todo el tutorial: sin esto, un jugador rápido puede cruzar
+        // la Sala 0 (una sola palanca+puerta latching, sin exigir coordinación) antes de
+        // que el loop de 8s siquiera termine una vez — y sin loop, no hay eco grabado
+        // que llevar a la Sala 1, rompiendo la lección central del tutorial.
+        if (_loopTimer != null) _loopTimer.SetDurationMultiplier(0.4f);
+
+        _currentIndex = -1;
+        LoadNext();
+    }
+
     // Selección con las restricciones reales de la Fase 8 §17.4.2: sala 1 siempre SOLO
     // (calienta sin exigir coordinación), el resto mezclado sin repetir mecánica
     // consecutiva cuando el pool lo permite.
@@ -53,6 +85,7 @@ public class RoomAssembler : MonoBehaviour
     {
         var rng = new System.Random(seed);
         _runSequence.Clear();
+        _carryEchoesAcrossRooms = false;
 
         var soloRooms = _pool.FindAll(r => r.data.mechanic == PrimaryMechanic.SOLO);
         var nonSolo = _pool.FindAll(r => r.data.mechanic != PrimaryMechanic.SOLO);
@@ -91,6 +124,13 @@ public class RoomAssembler : MonoBehaviour
 
         if (_currentIndex >= _runSequence.Count)
         {
+            // Fin de secuencia (normal o tutorial) — restaurar todo lo que el tutorial
+            // pudo haber alterado temporalmente, para que la SIGUIENTE run (ya normal)
+            // no herede nada de esto.
+            _carryEchoesAcrossRooms = false;
+            if (_loopTimer != null) _loopTimer.SetDurationMultiplier(1f);
+            if (Services.TryGet<EchoManager>(out var echoManagerReset)) echoManagerReset.RestoreMaxEchos();
+
             if (Services.TryGet<RunManager>(out var run))
                 run.CompleteRun(bossDefeated: false); // sin bosses todavía (Fase 10 M4)
             return;
@@ -111,7 +151,7 @@ public class RoomAssembler : MonoBehaviour
             if (theme != null) _camera.backgroundColor = theme.backgroundColor;
         }
 
-        _echoManager.ClearAllEchos();
+        if (!_carryEchoesAcrossRooms) _echoManager.ClearAllEchos();
         _loopTimer.StartLoop();
 
         if (next.isBoss && Services.TryGet<RunManager>(out var runBoss))
@@ -184,6 +224,7 @@ public class RoomAssembler : MonoBehaviour
     {
         var target = _pool.Find(r => r.data.roomId == roomId);
         if (target == null && _bossRoom != null && _bossRoom.data.roomId == roomId) target = _bossRoom;
+        if (target == null) target = _tutorialRooms.Find(r => r.data.roomId == roomId);
         if (target == null) return false;
 
         _runSequence.Clear();
@@ -200,4 +241,10 @@ public class RoomAssembler : MonoBehaviour
     // jugador — no siempre es la Room 0 original. Sin esto, morir en cualquier otra sala
     // te devolvía al spawn de la Room 0 (posiblemente desactivada), rompiendo el flujo.
     public Transform CurrentSpawnPoint => (_currentIndex >= 0 && _currentIndex < _runSequence.Count) ? _runSequence[_currentIndex].spawnPoint : null;
+
+    // InputRecorder/EchoPlayer usan esto para grabar/reproducir posiciones relativas a
+    // la sala en vez de absolutas — ver comentario en _carryEchoesAcrossRooms.
+    public float CurrentRoomOriginX => (_currentIndex >= 0 && _currentIndex < _runSequence.Count)
+        ? _runSequence[_currentIndex].container.transform.position.x
+        : 0f;
 }

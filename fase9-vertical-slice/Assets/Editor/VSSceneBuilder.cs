@@ -472,6 +472,10 @@ public static class VSSceneBuilder
         // ---- Boss 1 "El Espejo Fragmentado" (GDD §8.2, Fase 1) — slot fijo al final de
         // cada run, no sale del sorteo aleatorio del pool. ----
         BuildBossRoom(assembler, "Z1_BOSS_ESPEJO_FRAGMENTADO", xOffset: 2950f);
+
+        // ---- Tutorial (GDD §5) — 4 salas fijas, solo para la primera run del jugador.
+        // Nunca salen del sorteo del pool normal. ----
+        BuildTutorialRooms(assembler);
     }
 
     // Sala de traversal simple: piso plano, opcionalmente con un foso que exige saltar
@@ -939,6 +943,157 @@ public static class VSSceneBuilder
             spawnPoint = spawnPoint,
             cameraAnchor = camAnchor,
         });
+    }
+
+    // GDD §5 — helpers compartidos por las 4 salas del tutorial. Palanca y puerta están
+    // separadas (a diferencia de BuildSyncRoom) porque la Sala 1 necesita 2 palancas
+    // controlando la MISMA puerta — construirlas como un par fijo dejaría un GameObject
+    // de puerta huérfano y sin abrir jamás, bloqueando el paso para siempre.
+    private static TriggerLever BuildTutorialLever(Transform parent, string label, float leverX, DoorGate linkedDoor)
+    {
+        var leverGO = new GameObject($"Lever_{label}");
+        leverGO.transform.SetParent(parent, false);
+        leverGO.transform.localPosition = new Vector3(leverX, 1.5f, 0f);
+        var leverSr = leverGO.AddComponent<SpriteRenderer>();
+        leverSr.sprite = _leverOffSprite;
+        leverSr.sortingLayerName = "Hazard";
+        leverGO.AddComponent<BoxCollider2D>();
+        var lever = leverGO.AddComponent<TriggerLever>();
+        SetPrivate(lever, "_spriteOff", _leverOffSprite);
+        SetPrivate(lever, "_spriteOn", _leverOnSprite);
+        if (linkedDoor != null) SetPrivate(lever, "_linkedDoor", linkedDoor);
+        return lever;
+    }
+
+    private static DoorGate BuildTutorialDoor(Transform parent, string label, float doorX, bool latching, int requiredCount = 1)
+    {
+        var doorGO = new GameObject($"Door_{label}");
+        doorGO.transform.SetParent(parent, false);
+        doorGO.transform.localPosition = new Vector3(doorX, 1.5f, 0f);
+        doorGO.layer = LayerMask.NameToLayer("Ground");
+        var doorSr = doorGO.AddComponent<SpriteRenderer>();
+        doorSr.sprite = _doorClosedSprite;
+        doorSr.sortingLayerName = "Hazard";
+        doorGO.transform.localScale = new Vector3(1f, 1.5f, 1f);
+        doorGO.AddComponent<BoxCollider2D>();
+        var door = doorGO.AddComponent<DoorGate>();
+        SetPrivate(door, "_spriteClosed", _doorClosedSprite);
+        SetPrivate(door, "_spriteOpen", _doorOpenSprite);
+        SetPrivate(door, "_latching", latching);
+        if (requiredCount != 1) SetPrivateField(door, "_requiredCount", requiredCount);
+        return door;
+    }
+
+    // Palanca + puerta 1-a-1, para las salas que no comparten puertas entre palancas.
+    private static (TriggerLever lever, DoorGate door) BuildTutorialGate(
+        Transform parent, string label, float leverX, float doorX, bool latching)
+    {
+        var door = BuildTutorialDoor(parent, label, doorX, latching);
+        var lever = BuildTutorialLever(parent, label, leverX, door);
+        return (lever, door);
+    }
+
+    private static GameObject BuildTutorialFloor(Transform parent, float width)
+    {
+        var floorGO = new GameObject("Floor");
+        floorGO.transform.SetParent(parent, false);
+        floorGO.transform.localPosition = new Vector3(width * 0.5f, 0f, 0f);
+        floorGO.layer = LayerMask.NameToLayer("Ground");
+        var floorSr = floorGO.AddComponent<SpriteRenderer>();
+        floorSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+        floorSr.sortingLayerName = "Terrain";
+        floorSr.drawMode = SpriteDrawMode.Tiled;
+        floorSr.size = new Vector2(width, 2f);
+        var floorCol = floorGO.AddComponent<BoxCollider2D>();
+        floorCol.size = new Vector2(width, 2f);
+        return floorGO;
+    }
+
+    private static void FinishTutorialRoom(RoomAssembler assembler, GameObject container, string roomId,
+        float floorWidth, float exitX, DoorGate requiredDoor, int tier)
+    {
+        container.AddComponent<RoomVisualTheme>().backgroundColor = new Color(0.03f, 0.05f, 0.07f);
+
+        var exitGO = new GameObject("RoomExit");
+        exitGO.transform.SetParent(container.transform, false);
+        exitGO.transform.localPosition = new Vector3(exitX, 1f, 0f);
+        var exitCol = exitGO.AddComponent<BoxCollider2D>();
+        exitCol.size = new Vector2(1.5f, 3f);
+        var exit = exitGO.AddComponent<RoomExit>();
+        if (requiredDoor != null) SetPrivate(exit, "_requiredDoor", requiredDoor);
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(floorWidth * 0.4f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 1;
+        data.difficultyTier = tier;
+        data.mechanic = PrimaryMechanic.SOLO; // no participan del sorteo, esto es solo metadata
+        data.hasAltSolution = false;
+        data.introRunMin = 1;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterTutorialRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
+    }
+
+    private static void BuildTutorialRooms(RoomAssembler assembler)
+    {
+        // Sala 0 — "El Espejo": una palanca latching + puerta. Sin riesgo, cruzar es
+        // gratis — lo único que importa es que grabe un eco real para la Sala 1.
+        var t0 = new GameObject("Room_TUT_00_EL_ESPEJO");
+        t0.transform.position = new Vector3(3000f, 0f, 0f);
+        BuildTutorialFloor(t0.transform, 16f);
+        var (_, door0) = BuildTutorialGate(t0.transform, "M0", leverX: 4f, doorX: 8f, latching: true);
+        FinishTutorialRoom(assembler, t0, "TUT_00_EL_ESPEJO", floorWidth: 16f, exitX: 12f, requiredDoor: door0, tier: 1);
+
+        // Sala 1 — "La Puerta Cerrada": 2 palancas, 1 puerta que exige ambas a la vez.
+        // Palanca A queda EN LA MISMA X LOCAL que la única palanca de la Sala 0 — el eco
+        // que se trae de ahí (posición relativa a la sala, no absoluta) cruza justo por
+        // encima de la Palanca A cuando se reproduce acá.
+        var t1 = new GameObject("Room_TUT_01_PUERTA_CERRADA");
+        t1.transform.position = new Vector3(3050f, 0f, 0f);
+        BuildTutorialFloor(t1.transform, 24f);
+        var doorAB = BuildTutorialDoor(t1.transform, "AB", doorX: 18f, latching: false, requiredCount: 2);
+        BuildTutorialLever(t1.transform, "A", leverX: 4f, doorAB);
+        BuildTutorialLever(t1.transform, "B", leverX: 14f, doorAB);
+        FinishTutorialRoom(assembler, t1, "TUT_01_PUERTA_CERRADA", floorWidth: 24f, exitX: 21f, requiredDoor: doorAB, tier: 2);
+
+        // Sala 2 — "El Momento No Planeado": activar la Palanca A fuerza el cierre de
+        // la puerta que B sostiene (CounterweightLink) — el plan "obvio" del jugador
+        // (resolver A y después B) se rompe solo, necesita un eco cubriendo B.
+        var t2 = new GameObject("Room_TUT_02_MOMENTO_NO_PLANEADO");
+        t2.transform.position = new Vector3(3100f, 0f, 0f);
+        BuildTutorialFloor(t2.transform, 26f);
+        var (leverA2, doorA2) = BuildTutorialGate(t2.transform, "A", leverX: 4f, doorX: 9f, latching: false);
+        var (leverB2, doorB2) = BuildTutorialGate(t2.transform, "B", leverX: 14f, doorX: 19f, latching: false);
+        var cwGO = new GameObject("Counterweight_A_to_B");
+        cwGO.transform.SetParent(t2.transform, false);
+        var cw = cwGO.AddComponent<CounterweightLink>();
+        SetPrivate(cw, "_triggerLever", leverA2);
+        SetPrivate(cw, "_affectedDoor", doorB2);
+        FinishTutorialRoom(assembler, t2, "TUT_02_MOMENTO_NO_PLANEADO", floorWidth: 26f, exitX: 23f, requiredDoor: doorB2, tier: 3);
+
+        // Sala 3 — "Consolidación": 3 palancas en serie — para este punto el jugador ya
+        // debería tener 2 ecos acumulados (Salas 0-2) cubriendo 2, y él mismo cubre la 3ra.
+        var t3 = new GameObject("Room_TUT_03_CONSOLIDACION");
+        t3.transform.position = new Vector3(3150f, 0f, 0f);
+        BuildTutorialFloor(t3.transform, 34f);
+        BuildTutorialGate(t3.transform, "1", leverX: 4f, doorX: 9f, latching: false);
+        BuildTutorialGate(t3.transform, "2", leverX: 13f, doorX: 18f, latching: false);
+        var (_, door3c) = BuildTutorialGate(t3.transform, "3", leverX: 22f, doorX: 27f, latching: false);
+        FinishTutorialRoom(assembler, t3, "TUT_03_CONSOLIDACION", floorWidth: 34f, exitX: 30f, requiredDoor: door3c, tier: 3);
     }
 
     public static void BuildPlayerExe()

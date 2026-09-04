@@ -30,9 +30,15 @@ public class InputRecorder : MonoBehaviour
         if (_sampleTimer < 1f / SAMPLE_RATE) return;
         _sampleTimer -= 1f / SAMPLE_RATE;
 
+        // Posición relativa al origen X de la sala ACTUAL, no absoluta — normalmente es
+        // un no-op (la grabación se consume en la misma sala donde se hizo), pero es lo
+        // que permite que un eco grabado en una sala siga teniendo sentido si se lo
+        // lleva a otra sala con un xOffset distinto (GDD §5 Tutorial: el eco de la Sala
+        // 0 "camina hacia" la Palanca A de la Sala 1).
+        float roomOriginX = Services.TryGet<RoomAssembler>(out var asm) ? asm.CurrentRoomOriginX : 0f;
         _buffer[_writeIndex % BUFFER_SIZE] = new Snapshot
         {
-            position = transform.position,
+            position = new Vector2(transform.position.x - roomOriginX, transform.position.y),
             facingRight = _player.FacingRight,
             state = _player.CurrentState
         };
