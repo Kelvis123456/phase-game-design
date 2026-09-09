@@ -147,6 +147,9 @@ public class RunManager : MonoBehaviour
                 _progression.EarnFlat(ActiveUpgrades.pcBonusOnComplete);
         }
 
+        if (Services.TryGet<AchievementSystem>(out var achievements))
+            achievements.CheckAndUnlock();
+
         TransitionTo(RunState.Idle);
     }
 

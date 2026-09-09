@@ -33,6 +33,12 @@ public class MainMenuUI : MonoBehaviour
         Application.Quit();
     }
 
+    private void OnAchievements()
+    {
+        if (Services.TryGet<AchievementsScreenUI>(out var screen))
+            screen.Show();
+    }
+
     private void SetGameplayEnabled(bool active)
     {
         if (Services.TryGet<PlayerController>(out var player)) player.enabled = active;
@@ -87,6 +93,35 @@ public class MainMenuUI : MonoBehaviour
         playLabelRt.offsetMin = Vector2.zero;
         playLabelRt.offsetMax = Vector2.zero;
 
+        // GDD §11.5.1: fila de botones secundarios (Opciones | Logros | Tienda
+        // Permanente) — solo Logros existe todavía; Opciones y Tienda quedan fuera.
+        var achievementsGO = new GameObject("AchievementsButton");
+        achievementsGO.transform.SetParent(canvasGO.transform, false);
+        var achievementsImg = achievementsGO.AddComponent<Image>();
+        achievementsImg.color = new Color(1f, 1f, 1f, 0f);
+        var achievementsBtn = achievementsGO.AddComponent<Button>();
+        achievementsBtn.onClick.AddListener(OnAchievements);
+        var achievementsRt = achievementsGO.GetComponent<RectTransform>();
+        achievementsRt.anchorMin = new Vector2(0.5f, 0f);
+        achievementsRt.anchorMax = new Vector2(0.5f, 0f);
+        achievementsRt.pivot = new Vector2(0.5f, 0f);
+        achievementsRt.sizeDelta = new Vector2(140f, 30f);
+        achievementsRt.anchoredPosition = new Vector2(0f, 100f);
+
+        var achievementsLabelGO = new GameObject("Label");
+        achievementsLabelGO.transform.SetParent(achievementsGO.transform, false);
+        var achievementsLabel = achievementsLabelGO.AddComponent<Text>();
+        achievementsLabel.text = "Logros";
+        achievementsLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        achievementsLabel.fontSize = 16;
+        achievementsLabel.alignment = TextAnchor.MiddleCenter;
+        achievementsLabel.color = new Color(0.75f, 0.78f, 0.85f, 0.85f);
+        var achievementsLabelRt = achievementsLabelGO.GetComponent<RectTransform>();
+        achievementsLabelRt.anchorMin = Vector2.zero;
+        achievementsLabelRt.anchorMax = Vector2.one;
+        achievementsLabelRt.offsetMin = Vector2.zero;
+        achievementsLabelRt.offsetMax = Vector2.zero;
+
         var quitGO = new GameObject("QuitButton");
         quitGO.transform.SetParent(canvasGO.transform, false);
         var quitImg = quitGO.AddComponent<Image>();
@@ -98,7 +133,7 @@ public class MainMenuUI : MonoBehaviour
         quitRt.anchorMax = new Vector2(0.5f, 0f);
         quitRt.pivot = new Vector2(0.5f, 0f);
         quitRt.sizeDelta = new Vector2(140f, 30f);
-        quitRt.anchoredPosition = new Vector2(0f, 80f);
+        quitRt.anchoredPosition = new Vector2(0f, 60f);
 
         var quitLabelGO = new GameObject("Label");
         quitLabelGO.transform.SetParent(quitGO.transform, false);
