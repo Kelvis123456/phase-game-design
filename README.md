@@ -26,16 +26,18 @@ Este repositorio es un **documento de pre-producción completo**, no un juego te
 
 ## Prototipo técnico real
 
-`fase9-vertical-slice/` es un **proyecto Unity 6000.4 LTS real y jugable** (no solo documentación ni scripts sueltos), verificado corriendo — movimiento, salto, colisión con el piso, bullet-time, grabación/reproducción de ecos, y muerte por hazard con reset, todo confirmado con capturas reales de la build standalone en ejecución:
+`fase9-vertical-slice/` es un **proyecto Unity 6000.4 LTS real y jugable** (no solo documentación ni scripts sueltos) que ya cubre buena parte del plan de Fase 10, verificado corriendo en vivo con capturas reales de la build standalone en cada sistema:
 
-- `Assets/Scripts/Core/` — ServiceLocator, bootstrap
-- `Assets/Scripts/Echo/` — grabación y reproducción de ecos (InputRecorder, EchoManager, EchoPlayer)
-- `Assets/Scripts/Time/` — TimeManager con time scales por capa (bullet-time real vs. ecos inmunes a él)
-- `Assets/Scripts/Player/` — controller y stats
-- `Assets/Scripts/Run/` — timer de loop, controlador de sala
-- `Assets/Scripts/Level/` — hazard con muerte y reset
-- `Assets/Editor/VSSceneBuilder.cs` — construye la sala de prueba completa por código (tilemap, cámara, colliders, wiring de todos los sistemas), reproducible con `-executeMethod VSSceneBuilder.BuildAll`
-- `Assets/Shaders/EchoShader.shader` — shader de tinte para representar ecos
+- **Movimiento y mundo**: controller/stats del jugador, colisión real (BoxCollider2D explícito, no Tilemap), bullet-time por capas (`TimeManager` — el jugador va a 0.1x, los ecos siempre a 1.0x, `Time.timeScale` nunca se toca), muerte por hazard con reset.
+- **Ecos**: grabación/reproducción real (`InputRecorder`, `EchoManager` con pool de 10, `EchoPlayer`), posición relativa a la sala (no absoluta) para que un eco grabado en una sala siga teniendo sentido si se lo lleva a otra.
+- **Arte real**: sprites de pixel art hechos a mano (jugador, piso, hazard, palanca, puerta) en vez de rectángulos de color placeholder, más un keyart de fondo para el menú principal.
+- **Pool de salas**: 50+ salas reales en Zona 1 (SYNC, TIMING, SOLO) y las primeras de Zona 3 (DEPENDENCY con puertas "latching" en cadena, FRUSTRATION con hazard de timing), más un boss real (Fase 1 de "El Espejo Fragmentado": paneles con oscilador + palanca + confrontación final) y un tutorial de 4 salas 100% sin texto (GDD §5) para la primera run de cada jugador.
+- **Meta-progresión**: árbol de 29 nodos reales (las 4 ramas del GDD), 9 de 12 upgrades de run con efecto real conectado, cinemática real del "Tercer Espejo" al comprar el 3er slot de eco.
+- **Logros**: arquitectura real (no la lista de 30+ del GDD, que el propio documento difiere a datos de jugadores reales) con 7 logros iniciales verificables, pantalla accesible desde el menú principal.
+- **UI real**: menú principal, árbol de progresión, selector de upgrades, pantalla de logros — todo construido en runtime (uGUI), no mockups.
+- `Assets/Editor/VSSceneBuilder.cs` — construye TODO el proyecto desde cero por código (escena, salas, wiring de cada sistema), reproducible con `-executeMethod VSSceneBuilder.BuildAll`.
+
+**Lo que falta de forma honesta** (no reclamado como hecho): Fases 2-3 del boss, upgrades de run R05/R06/R10 (necesitan sistemas nuevos: lookahead de trigger, trails de eco, UI de revelación), Zona 2 y el resto de Zona 3, monetización (tienda, IAP, anuncios), audio, localización, accesibilidad conectada a gameplay, builds móviles, y QA/lanzamiento real — ver `fase10-desarrollo/` y `fase11-qa-lanzamiento/` para el plan completo de esa parte.
 
 Abrir con Unity Hub (versión 6000.4.10f1) apuntando a `fase9-vertical-slice/`, o regenerar la escena y el build desde cero vía Unity en batchmode.
 
