@@ -66,6 +66,11 @@ public class DebugHUD : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F10)) ForceApplyUpgrade("R07", "F10");
         if (Input.GetKeyDown(KeyCode.F11)) ForceApplyUpgrade("R08", "F11");
         if (Input.GetKeyDown(KeyCode.F12)) ForceApplyUpgrade("R09", "F12");
+        if (Input.GetKeyDown(KeyCode.K) && Services.TryGet<AchievementSystem>(out var achievementsCheck))
+        {
+            achievementsCheck.CheckAndUnlock();
+            _lastAction = "K: AchievementSystem.CheckAndUnlock() forzado (sin esperar a que termine una run)";
+        }
     }
 
     // Ayuda de QA: aplicar un upgrade específico por id sin pasar por el sorteo 2-de-N
@@ -111,6 +116,10 @@ public class DebugHUD : MonoBehaviour
             ? $"pcBonus={runU.ActiveUpgrades.pcBonusOnComplete} btBonus={runU.ActiveUpgrades.bulletTimeDeactivateBonus:F2} worldSlow={runU.ActiveUpgrades.worldSlowMultiplier:F2} echoSpeed={runU.ActiveUpgrades.echoSpeedMultiplier:F2} loopMult={runU.ActiveUpgrades.loopDurationMultiplier:F2} roomRestart={runU.ActiveUpgrades.roomRestartAvailable} dupEcho={runU.ActiveUpgrades.duplicateFirstEcho}"
             : "NULL";
 
+        string achievementsText = Services.TryGet<AchievementSystem>(out var ach)
+            ? $"{AchievementSystem.Table.FindAll(a => ach.IsUnlocked(a.id)).Count}/{AchievementSystem.Table.Count}"
+            : "NULL";
+
         string bossText = Services.TryGet<BossController>(out var boss)
             ? $"allPanels={boss.AllPanelsActive} holdProgress={boss.HoldProgress:F2}\n{boss.DebugPanelStates()}"
             : "NULL";
@@ -126,7 +135,7 @@ public class DebugHUD : MonoBehaviour
         GUI.Label(new Rect(15, 178, 680, 24), $"groundCollider bounds={boundsText} enabled={enabledText}{compositePathCount}", style);
         GUI.Label(new Rect(15, 202, 680, 24), $"groundMask={groundMask.value}", style);
         GUI.Label(new Rect(15, 226, 680, 24), $"PhaseCrystals={crystalsText}  A2unlocked={a2Text}  echoActive={echoActiveText}", style);
-        GUI.Label(new Rect(15, 250, 680, 24), $"RunState={runStateText}  Room={roomText}  seqCount={seqCountText}", style);
+        GUI.Label(new Rect(15, 250, 680, 24), $"RunState={runStateText}  Room={roomText}  seqCount={seqCountText}  achievements={achievementsText}", style);
         GUI.Label(new Rect(15, 274, 680, 24), $"[F2 earn][F3 unlock A2][F4 start run] last: {_lastAction}", style);
         GUI.Label(new Rect(15, 298, 880, 24), $"ActiveUpgrades: {upgradesText}", style);
         GUI.Label(new Rect(15, 322, 880, 90), $"Boss: {bossText}", style);

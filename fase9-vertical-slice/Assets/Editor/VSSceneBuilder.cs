@@ -318,6 +318,12 @@ public static class VSSceneBuilder
         var upgradeSelectorGO = new GameObject("UpgradeSelectorUI");
         upgradeSelectorGO.AddComponent<UpgradeSelectorUI>();
 
+        var achievementSystemGO = new GameObject("AchievementSystem");
+        achievementSystemGO.AddComponent<AchievementSystem>();
+
+        var achievementsScreenGO = new GameObject("AchievementsScreenUI");
+        achievementsScreenGO.AddComponent<AchievementsScreenUI>();
+
         var mainMenuGO = new GameObject("MainMenuUI");
         var mainMenu = mainMenuGO.AddComponent<MainMenuUI>();
         SetPrivate(mainMenu, "_background", keyartSprite);
