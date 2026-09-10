@@ -154,6 +154,9 @@ public class RoomAssembler : MonoBehaviour
         if (!_carryEchoesAcrossRooms) _echoManager.ClearAllEchos();
         _loopTimer.StartLoop();
 
+        if (Services.TryGet<AudioManager>(out var audio))
+            audio.PlayZoneMusic(next.data.zoneId, next.isBoss);
+
         if (next.isBoss && Services.TryGet<RunManager>(out var runBoss))
             runBoss.EnterBossFight();
     }

@@ -17,6 +17,7 @@ public class MirrorPanel : MonoBehaviour
     [SerializeField] private Color _colorDim = new Color(0.25f, 0.28f, 0.35f, 1f);   // fuera de ventana
     [SerializeField] private Color _colorAlignable = new Color(0.6f, 0.75f, 0.95f, 1f); // ventana abierta
     [SerializeField] private Color _colorActive = new Color(0.4f, 1f, 0.85f, 1f);     // resuelto
+    [SerializeField] private AudioClip _activateSfx;
 
     private SpriteRenderer _sprite;
     private float _clock;
@@ -35,7 +36,10 @@ public class MirrorPanel : MonoBehaviour
         _clock += Time.deltaTime;
 
         if (!IsActive && _lever != null && _lever.IsActive && IsAlignable)
+        {
             IsActive = true;
+            if (Services.TryGet<AudioManager>(out var audio)) audio.PlaySfx(_activateSfx);
+        }
 
         _sprite.color = IsActive ? _colorActive : (IsAlignable ? _colorAlignable : _colorDim);
     }

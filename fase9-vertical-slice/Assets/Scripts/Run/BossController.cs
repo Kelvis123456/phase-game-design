@@ -17,6 +17,7 @@ public class BossController : MonoBehaviour
     [SerializeField] private MirrorPanel[] _panels;
     [SerializeField] private BossCenterTrigger _centerTrigger;
     [SerializeField] private float _requiredHoldTime = 1f;
+    [SerializeField] private AudioClip _defeatSfx;
 
     private float _holdTimer;
     private bool _defeated;
@@ -33,6 +34,7 @@ public class BossController : MonoBehaviour
             if (_holdTimer >= _requiredHoldTime)
             {
                 _defeated = true;
+                if (Services.TryGet<AudioManager>(out var audio)) audio.PlaySfx(_defeatSfx);
                 if (Services.TryGet<RoomAssembler>(out var assembler))
                     assembler.OnBossDefeated();
             }

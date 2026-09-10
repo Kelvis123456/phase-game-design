@@ -343,6 +343,10 @@ public static class VSSceneBuilder
         // ---- Fase 10 M2: pool de salas real ----
         BuildRoomPool(cam, playerController, echoManager, loopTimer, spawnGO, gridGO, hazardGO, groundTile);
 
+        // ---- Audio: música + SFX (ver AudioManager.cs — Unity nativo en vez de FMOD,
+        // que requiere FMOD Studio de escritorio para autorear bancos) ----
+        BuildAudio();
+
         // ---- Save scene, register in build settings ----
         EditorSceneManager.SaveScene(scene, ScenePath);
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -350,6 +354,55 @@ public static class VSSceneBuilder
         AssetDatabase.Refresh();
 
         Debug.Log("[VSSceneBuilder] Scene build complete: " + ScenePath);
+    }
+
+    // Construye el AudioManager (música + SFX "globales" de UI/progresión) y después
+    // recorre TODA la escena buscando los objetos de nivel (palancas, puertas, paneles,
+    // pinchos, bosses) ya creados por BuildRoomPool/BuildBossRoom/etc. para asignarles
+    // su clip — evita repetir el wiring de audio en cada uno de los ~12 sitios donde se
+    // instancian esos componentes.
+    private static void BuildAudio()
+    {
+        AudioClip Load(string path) => AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+
+        var audioGO = new GameObject("AudioManager");
+        var audio = audioGO.AddComponent<AudioManager>();
+        SetPrivateField(audio, "_menuTheme", Load("Assets/Audio/Music/menu_theme.mp3"));
+        SetPrivateField(audio, "_zoneAmbient", new[]
+        {
+            Load("Assets/Audio/Music/z1_ambient.mp3"),
+            Load("Assets/Audio/Music/z2_ambient.mp3"),
+            Load("Assets/Audio/Music/z3_ambient.mp3"),
+        });
+        SetPrivateField(audio, "_bossTheme", Load("Assets/Audio/Music/boss_theme.mp3"));
+        SetPrivateField(audio, "_uiConfirmSfx", Load("Assets/Audio/SFX/ui_confirm.mp3"));
+        SetPrivateField(audio, "_uiCancelSfx", Load("Assets/Audio/SFX/ui_cancel.mp3"));
+        SetPrivateField(audio, "_uiNavigateSfx", Load("Assets/Audio/SFX/ui_navigate.mp3"));
+        SetPrivateField(audio, "_nodeUnlockSfx", Load("Assets/Audio/SFX/node_unlock.mp3"));
+        SetPrivateField(audio, "_upgradeUnlockSfx", Load("Assets/Audio/SFX/upgrade_unlock.mp3"));
+        SetPrivateField(audio, "_achievementUnlockSfx", Load("Assets/Audio/SFX/node_unlock.mp3"));
+        SetPrivateField(audio, "_zoneTransitionSfx", Load("Assets/Audio/SFX/zone_transition.mp3"));
+
+        var leverSfx = Load("Assets/Audio/SFX/lever_toggle.ogg");
+        var doorOpenSfx = Load("Assets/Audio/SFX/door_open.ogg");
+        var doorCloseSfx = Load("Assets/Audio/SFX/door_close.ogg");
+        var mirrorActivateSfx = Load("Assets/Audio/SFX/mirror_panel_activate.ogg");
+        var mirrorShatterSfx = Load("Assets/Audio/SFX/mirror_shatter.ogg");
+        var hazardHitSfx = Load("Assets/Audio/SFX/hazard_hit.ogg");
+
+        foreach (var lever in Object.FindObjectsByType<TriggerLever>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            SetPrivate(lever, "_toggleSfx", leverSfx);
+        foreach (var door in Object.FindObjectsByType<DoorGate>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            SetPrivate(door, "_openSfx", doorOpenSfx);
+            SetPrivate(door, "_closeSfx", doorCloseSfx);
+        }
+        foreach (var panel in Object.FindObjectsByType<MirrorPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            SetPrivate(panel, "_activateSfx", mirrorActivateSfx);
+        foreach (var hazard in Object.FindObjectsByType<HazardSpike>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            SetPrivate(hazard, "_hitSfx", hazardHitSfx);
+        foreach (var boss in Object.FindObjectsByType<BossController>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            SetPrivate(boss, "_defeatSfx", mirrorShatterSfx);
     }
 
     // Fase 10 M2: envuelve la sala original como "Room 0" (SOLO, sin palancas) y construye
