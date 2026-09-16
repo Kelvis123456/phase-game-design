@@ -50,6 +50,13 @@ public class MainMenuUI : MonoBehaviour
             screen.Show();
     }
 
+    private void OnOptions()
+    {
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlayUiConfirm();
+        if (Services.TryGet<AccessibilityOptionsUI>(out var screen))
+            screen.Show();
+    }
+
     private void SetGameplayEnabled(bool active)
     {
         if (Services.TryGet<PlayerController>(out var player)) player.enabled = active;
@@ -105,7 +112,7 @@ public class MainMenuUI : MonoBehaviour
         playLabelRt.offsetMax = Vector2.zero;
 
         // GDD §11.5.1: fila de botones secundarios (Opciones | Logros | Tienda
-        // Permanente) — Logros y Tienda existen; Opciones queda fuera.
+        // Permanente) — los 3 existen.
         var achievementsGO = new GameObject("AchievementsButton");
         achievementsGO.transform.SetParent(canvasGO.transform, false);
         var achievementsImg = achievementsGO.AddComponent<Image>();
@@ -144,7 +151,7 @@ public class MainMenuUI : MonoBehaviour
         shopRt.anchorMax = new Vector2(0.5f, 0f);
         shopRt.pivot = new Vector2(0.5f, 0f);
         shopRt.sizeDelta = new Vector2(140f, 30f);
-        shopRt.anchoredPosition = new Vector2(0f, 60f);
+        shopRt.anchoredPosition = new Vector2(0f, 70f);
 
         var shopLabelGO = new GameObject("Label");
         shopLabelGO.transform.SetParent(shopGO.transform, false);
@@ -160,6 +167,33 @@ public class MainMenuUI : MonoBehaviour
         shopLabelRt.offsetMin = Vector2.zero;
         shopLabelRt.offsetMax = Vector2.zero;
 
+        var optionsGO = new GameObject("OptionsButton");
+        optionsGO.transform.SetParent(canvasGO.transform, false);
+        var optionsImg = optionsGO.AddComponent<Image>();
+        optionsImg.color = new Color(1f, 1f, 1f, 0f);
+        var optionsBtn = optionsGO.AddComponent<Button>();
+        optionsBtn.onClick.AddListener(OnOptions);
+        var optionsRt = optionsGO.GetComponent<RectTransform>();
+        optionsRt.anchorMin = new Vector2(0.5f, 0f);
+        optionsRt.anchorMax = new Vector2(0.5f, 0f);
+        optionsRt.pivot = new Vector2(0.5f, 0f);
+        optionsRt.sizeDelta = new Vector2(140f, 30f);
+        optionsRt.anchoredPosition = new Vector2(0f, 40f);
+
+        var optionsLabelGO = new GameObject("Label");
+        optionsLabelGO.transform.SetParent(optionsGO.transform, false);
+        var optionsLabel = optionsLabelGO.AddComponent<Text>();
+        optionsLabel.text = "Opciones";
+        optionsLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        optionsLabel.fontSize = 16;
+        optionsLabel.alignment = TextAnchor.MiddleCenter;
+        optionsLabel.color = new Color(0.75f, 0.78f, 0.85f, 0.85f);
+        var optionsLabelRt = optionsLabelGO.GetComponent<RectTransform>();
+        optionsLabelRt.anchorMin = Vector2.zero;
+        optionsLabelRt.anchorMax = Vector2.one;
+        optionsLabelRt.offsetMin = Vector2.zero;
+        optionsLabelRt.offsetMax = Vector2.zero;
+
         var quitGO = new GameObject("QuitButton");
         quitGO.transform.SetParent(canvasGO.transform, false);
         var quitImg = quitGO.AddComponent<Image>();
@@ -171,7 +205,7 @@ public class MainMenuUI : MonoBehaviour
         quitRt.anchorMax = new Vector2(0.5f, 0f);
         quitRt.pivot = new Vector2(0.5f, 0f);
         quitRt.sizeDelta = new Vector2(140f, 30f);
-        quitRt.anchoredPosition = new Vector2(0f, 20f);
+        quitRt.anchoredPosition = new Vector2(0f, 10f);
 
         var quitLabelGO = new GameObject("Label");
         quitLabelGO.transform.SetParent(quitGO.transform, false);

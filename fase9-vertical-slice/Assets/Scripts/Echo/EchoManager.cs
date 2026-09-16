@@ -21,7 +21,9 @@ public class EchoManager : MonoBehaviour
     private readonly Queue<EchoPlayer> _pool = new Queue<EchoPlayer>();
     private bool _hasDuplicatedFirstEchoThisRun;
 
-    private static readonly Color[] EchoColors =
+    // Público para que AccessibilityOptionsUI pueda previsualizar el remapeo daltónico
+    // (GDD §14.2) sobre la paleta real, sin duplicar estos valores en otro archivo.
+    public static readonly Color[] EchoColors =
     {
         new Color(0.227f, 1.000f, 0.831f, 1f), // Cyan    #3AFFD4
         new Color(0.659f, 0.333f, 0.969f, 1f), // Violet  #A855F7
@@ -81,7 +83,7 @@ public class EchoManager : MonoBehaviour
         float speedMultiplier = run != null ? run.ActiveUpgrades.echoSpeedMultiplier : 1f;
 
         var echo = RentFromPool();
-        echo.Initialize(recording, EchoColors[_activeCount], _activeCount, speedMultiplier, SkinVisualForSlot(_activeCount));
+        echo.Initialize(recording, ColorForSlot(_activeCount), _activeCount, speedMultiplier, SkinVisualForSlot(_activeCount));
         _slots[_activeCount] = echo;
         _activeCount++;
 
@@ -93,10 +95,21 @@ public class EchoManager : MonoBehaviour
         {
             _hasDuplicatedFirstEchoThisRun = true;
             var dupEcho = RentFromPool();
-            dupEcho.Initialize(recording, EchoColors[_activeCount], _activeCount, speedMultiplier, SkinVisualForSlot(_activeCount));
+            dupEcho.Initialize(recording, ColorForSlot(_activeCount), _activeCount, speedMultiplier, SkinVisualForSlot(_activeCount));
             _slots[_activeCount] = dupEcho;
             _activeCount++;
         }
+    }
+
+    // GDD §14.2: el modo daltónico remapea el color IDENTIFICADOR del slot (la capa
+    // secundaria de diferenciación) — se aplica siempre que no haya una skin equipada,
+    // porque una skin (Rama C) ya eligió su propio color a propósito y no es lo que el
+    // modo daltónico intenta arreglar.
+    private Color ColorForSlot(int slot)
+    {
+        string mode = Services.TryGet<SaveSystem>(out var save) ? save.Current.accessibilityPrefs.colorblindMode : ColorblindPalette.Normal;
+        if (mode == ColorblindPalette.Normal) return EchoColors[slot];
+        return ColorblindPalette.Apply(EchoColors, mode)[slot];
     }
 
     // GDD §4.2 "MIS ECOS": cada slot puede tener su propia skin equipada (ProgressionSystem)

@@ -345,6 +345,11 @@ public static class VSSceneBuilder
         var echoShopGO = new GameObject("EchoShopUI");
         echoShopGO.AddComponent<EchoShopUI>();
 
+        // GDD §14.1/§14.2: pantalla de Opciones real (antes quedaba fuera) — el único
+        // ajuste de accesibilidad de este pase es el modo daltónico.
+        var accessibilityOptionsGO = new GameObject("AccessibilityOptionsUI");
+        accessibilityOptionsGO.AddComponent<AccessibilityOptionsUI>();
+
         var mainMenuGO = new GameObject("MainMenuUI");
         var mainMenu = mainMenuGO.AddComponent<MainMenuUI>();
         SetPrivate(mainMenu, "_background", keyartSprite);
