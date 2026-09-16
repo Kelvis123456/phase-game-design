@@ -136,4 +136,36 @@ public class ProgressionSystem : MonoBehaviour
         _save.Current.metaProgression.skillTreeNodes.Add(nodeId);
         _save.Save();
     }
+
+    // GDD §9.2 vías 1 y 2: compra directa con dinero real (modo sin anuncios, skins
+    // Premium C4/C7/C8/C10). Desbloquea el nodo sin tocar el balance de Phase Crystals —
+    // la vía gratuita del árbol sigue intacta, nunca se "gastan" PC que el jugador no gastó.
+    // Llamado por MonetizationSystem tras una compra exitosa, nunca directo desde UI.
+    public void UnlockViaPurchase(string nodeId)
+    {
+        if (IsNodeUnlocked(nodeId)) return;
+        _save.Current.metaProgression.skillTreeNodes.Add(nodeId);
+        OnNodeUnlocked?.Invoke(nodeId);
+        _save.Save();
+
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlayNodeUnlock();
+    }
+
+    // GDD §4.2 "MIS ECOS": qué skin (nodo Rama C) tiene asignada cada uno de los 5 slots
+    // de eco, y cambiarla — solo entre skins ya desbloqueadas, cambiable fuera de una run.
+    public string GetEquippedSkin(int slotIndex)
+    {
+        var list = _save.Current.metaProgression.equippedSkinPerSlot;
+        return slotIndex >= 0 && slotIndex < list.Count ? list[slotIndex] : "C1";
+    }
+
+    public bool TryEquipSkin(int slotIndex, string nodeId)
+    {
+        if (!IsNodeUnlocked(nodeId)) return false;
+        var list = _save.Current.metaProgression.equippedSkinPerSlot;
+        if (slotIndex < 0 || slotIndex >= list.Count) return false;
+        list[slotIndex] = nodeId;
+        _save.Save();
+        return true;
+    }
 }

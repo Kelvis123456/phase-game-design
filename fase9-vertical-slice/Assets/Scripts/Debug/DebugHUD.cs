@@ -71,6 +71,14 @@ public class DebugHUD : MonoBehaviour
             achievementsCheck.CheckAndUnlock();
             _lastAction = "K: AchievementSystem.CheckAndUnlock() forzado (sin esperar a que termine una run)";
         }
+        if (Input.GetKeyDown(KeyCode.N) && Services.TryGet<MonetizationSystem>(out var monN))
+        {
+            monN.PurchaseAdRemoval(ok => _lastAction = $"N: PurchaseAdRemoval() -> {ok}");
+        }
+        if (Input.GetKeyDown(KeyCode.B) && Services.TryGet<MonetizationSystem>(out var monB))
+        {
+            monB.PurchaseSkin("skin_c4", ok => _lastAction = $"B: PurchaseSkin(skin_c4) -> {ok}");
+        }
     }
 
     // Ayuda de QA: aplicar un upgrade específico por id sin pasar por el sorteo 2-de-N
@@ -124,7 +132,11 @@ public class DebugHUD : MonoBehaviour
             ? $"allPanels={boss.AllPanelsActive} holdProgress={boss.HoldProgress:F2}\n{boss.DebugPanelStates()}"
             : "NULL";
 
-        GUI.Box(new Rect(5, 5, 900, 420), "");
+        string monetizationText = Services.TryGet<ProgressionSystem>(out var progMon)
+            ? $"adsRemoved={progMon.IsNodeUnlocked("D2")} skins=[{progMon.GetEquippedSkin(0)},{progMon.GetEquippedSkin(1)},{progMon.GetEquippedSkin(2)},{progMon.GetEquippedSkin(3)},{progMon.GetEquippedSkin(4)}] owned=[C4:{progMon.IsNodeUnlocked("C4")} C7:{progMon.IsNodeUnlocked("C7")} C8:{progMon.IsNodeUnlocked("C8")} C10:{progMon.IsNodeUnlocked("C10")}]"
+            : "NULL";
+
+        GUI.Box(new Rect(5, 5, 900, 444), "");
         GUI.Label(new Rect(15, 10, 680, 24), $"frame={_frameCount} t={Time.time:F2} dt={Time.deltaTime:F4}", style);
         GUI.Label(new Rect(15, 34, 680, 24), $"player.pos={posText}", style);
         GUI.Label(new Rect(15, 58, 680, 24), $"rb.pos={rbText}", style);
@@ -139,5 +151,6 @@ public class DebugHUD : MonoBehaviour
         GUI.Label(new Rect(15, 274, 680, 24), $"[F2 earn][F3 unlock A2][F4 start run] last: {_lastAction}", style);
         GUI.Label(new Rect(15, 298, 880, 24), $"ActiveUpgrades: {upgradesText}", style);
         GUI.Label(new Rect(15, 322, 880, 90), $"Boss: {bossText}", style);
+        GUI.Label(new Rect(15, 414, 880, 24), $"Monetization: {monetizationText}", style);
     }
 }

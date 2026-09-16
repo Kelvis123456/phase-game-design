@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 // Reproduce un recording en bucle infinito.
 // Corre en Layer.Echo — NUNCA se ve afectado por el bullet-time del jugador.
@@ -30,32 +31,62 @@ public class EchoPlayer : MonoBehaviour
     private int _slotIndex;
     private float _speedMultiplier = 1f;
 
+    // GDD §4.2/§9.2 Rama C — skin equipada en este slot (null = C1 Eco Base, sin override).
+    // Ver SkinCatalog para qué expresa cada una con el material/luz/ciclo disponibles hoy.
+    private SkinCatalog.SkinVisual _skinVisual;
+    private Light2D _skinLight; // C8 Espectro de Luz
+    private int _rainbowCycleIndex;
+
     // R06 Persistencia Ampliada: rastro visible solo en bullet-time (ayuda a leer la
     // ruta del eco mientras el tiempo está lento, no en juego normal a velocidad real
     // donde solo sería ruido visual). La duración base se dobla si el upgrade está activo.
     private const float BaseTrailTime = 0.5f;
 
-    public void Initialize(InputRecorder.Snapshot[] recording, Color color, int slotIndex, float speedMultiplier = 1f)
+    public void Initialize(InputRecorder.Snapshot[] recording, Color color, int slotIndex, float speedMultiplier = 1f, SkinCatalog.SkinVisual skinVisual = null)
     {
         _recording = recording;
         _slotIndex = slotIndex;
         _speedMultiplier = speedMultiplier;
+        _skinVisual = skinVisual;
+        _rainbowCycleIndex = 0;
         _frameIndex = 0;
         _frameTimer = 0f;
         _timeManager = Services.Get<TimeManager>();
 
+        Color appliedColor = _skinVisual != null ? _skinVisual.tint : color;
+        float appliedOpacity = _skinVisual != null && _skinVisual.opacityOverride >= 0f
+            ? _skinVisual.opacityOverride
+            : GetOpacityForSlot(slotIndex);
+
         // Material instanciado para no afectar el original
         _mat = new Material(_sprite.sharedMaterial);
-        _mat.SetColor(ShaderColor, color);
-        _mat.SetFloat(ShaderOpacity, GetOpacityForSlot(slotIndex));
+        _mat.SetColor(ShaderColor, appliedColor);
+        _mat.SetFloat(ShaderOpacity, appliedOpacity);
         _sprite.material = _mat;
 
         if (_trail != null)
         {
             _trail.Clear();
             _trail.emitting = false;
-            _trail.startColor = new Color(color.r, color.g, color.b, 0.6f);
-            _trail.endColor = new Color(color.r, color.g, color.b, 0f);
+            _trail.startColor = new Color(appliedColor.r, appliedColor.g, appliedColor.b, 0.6f);
+            _trail.endColor = new Color(appliedColor.r, appliedColor.g, appliedColor.b, 0f);
+        }
+
+        if (_skinVisual != null && _skinVisual.emitsLight)
+        {
+            if (_skinLight == null)
+            {
+                _skinLight = gameObject.AddComponent<Light2D>();
+                _skinLight.lightType = Light2D.LightType.Point;
+                _skinLight.pointLightOuterRadius = 2.5f;
+                _skinLight.intensity = 1.2f;
+            }
+            _skinLight.color = Color.white;
+            _skinLight.enabled = true;
+        }
+        else if (_skinLight != null)
+        {
+            _skinLight.enabled = false;
         }
 
         gameObject.SetActive(true);
@@ -74,7 +105,17 @@ public class EchoPlayer : MonoBehaviour
         _frameTimer -= FRAME_DURATION;
 
         _frameIndex = (_frameIndex + 1) % _recording.Length;
+        if (_frameIndex == 0) OnLoopWrapped();
         ApplySnapshot(_recording[_frameIndex]);
+    }
+
+    // C10 "Arco Iris Cuántico" (GDD §4.1): "cada loop del eco cambia de color" — se
+    // detecta acá porque es el único punto donde EchoPlayer ya sabe que un loop terminó.
+    private void OnLoopWrapped()
+    {
+        if (_skinVisual == null || !_skinVisual.cyclesColorPerLoop) return;
+        _rainbowCycleIndex = (_rainbowCycleIndex + 1) % SkinCatalog.RainbowCycleColors.Length;
+        _mat.SetColor(ShaderColor, SkinCatalog.RainbowCycleColors[_rainbowCycleIndex]);
     }
 
     private void UpdateTrail()
@@ -124,6 +165,7 @@ public class EchoPlayer : MonoBehaviour
 
         _recording = null;
         if (_trail != null) _trail.emitting = false;
+        if (_skinLight != null) _skinLight.enabled = false;
         StartCoroutine(RecycleAfterFade(0.4f));
     }
 
@@ -137,7 +179,10 @@ public class EchoPlayer : MonoBehaviour
     public void UpdateSlot(int newSlot)
     {
         _slotIndex = newSlot;
-        _mat?.SetFloat(ShaderOpacity, GetOpacityForSlot(newSlot));
+        float opacity = _skinVisual != null && _skinVisual.opacityOverride >= 0f
+            ? _skinVisual.opacityOverride
+            : GetOpacityForSlot(newSlot);
+        _mat?.SetFloat(ShaderOpacity, opacity);
     }
 
     // Ecos más viejos = más transparentes
