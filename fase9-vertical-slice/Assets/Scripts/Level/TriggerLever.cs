@@ -7,6 +7,8 @@ using UnityEngine;
 public class TriggerLever : MonoBehaviour
 {
     [SerializeField] private DoorGate _linkedDoor;
+    [SerializeField] private CollapsingPlatform _linkedPlatform; // GDD §8.3 Boss 2 "La Fractura"
+    [SerializeField] private DisintegratingFloor _linkedFloor; // GDD §8.3 Boss 3 "El Abismo"
     [SerializeField] private SpriteRenderer _sprite;
     [SerializeField] private Sprite _spriteOff;
     [SerializeField] private Sprite _spriteOn;
@@ -49,5 +51,7 @@ public class TriggerLever : MonoBehaviour
         }
         if (Services.TryGet<AudioManager>(out var audio)) audio.PlaySfx(_toggleSfx);
         if (_linkedDoor) _linkedDoor.SetHeld(this, active);
+        if (_linkedPlatform) _linkedPlatform.SetHeld(this, active);
+        if (_linkedFloor) _linkedFloor.SetHeld(this, active);
     }
 }

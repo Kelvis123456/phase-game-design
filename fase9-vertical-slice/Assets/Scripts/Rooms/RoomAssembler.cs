@@ -20,7 +20,11 @@ public class RoomInstance
 public class RoomAssembler : MonoBehaviour
 {
     [SerializeField] private List<RoomInstance> _pool = new List<RoomInstance>();
-    [SerializeField] private RoomInstance _bossRoom;
+    // Un boss por zona (data.zoneId) — antes era un solo RoomInstance porque solo Z1
+    // existía. Lista en vez de Dictionary<int,RoomInstance>: Unity NO serializa
+    // Dictionary al guardar la escena (silenciosamente queda vacío en el build real),
+    // mientras que List<[Serializable]> ya está probado (_pool usa el mismo patrón).
+    [SerializeField] private List<RoomInstance> _bossRooms = new List<RoomInstance>();
     [SerializeField] private List<RoomInstance> _tutorialRooms = new List<RoomInstance>();
     [SerializeField] private Camera _camera;
     [SerializeField] private PlayerController _player;
@@ -29,6 +33,7 @@ public class RoomAssembler : MonoBehaviour
 
     private List<RoomInstance> _runSequence = new List<RoomInstance>();
     private int _currentIndex = -1;
+    private int _currentZoneId = 1; // usado por InjectBonusRoom para no salirse de zona
     // GDD §5 Tutorial: las 4 salas del tutorial NO limpian ecos entre sí — el eco de la
     // Sala 0 tiene que seguir vivo cuando el jugador llega a la Sala 1. Toda sala normal
     // deja esto en false (comportamiento sin cambios).
@@ -43,11 +48,12 @@ public class RoomAssembler : MonoBehaviour
     }
 
     // GDD §7.1: "4 salas estándar + 1 sala de boss determinada por zona activa" — el
-    // boss no sale del sorteo aleatorio del pool, es un slot fijo al final de la run.
+    // boss no sale del sorteo aleatorio del pool, es un slot fijo al final de la run,
+    // elegido por data.zoneId (ver AssembleRun).
     public void RegisterBossRoom(RoomInstance instance)
     {
         instance.isBoss = true;
-        _bossRoom = instance;
+        _bossRooms.Add(instance);
         instance.container.SetActive(false);
     }
 
@@ -80,15 +86,19 @@ public class RoomAssembler : MonoBehaviour
 
     // Selección con las restricciones reales de la Fase 8 §17.4.2: sala 1 siempre SOLO
     // (calienta sin exigir coordinación), el resto mezclado sin repetir mecánica
-    // consecutiva cuando el pool lo permite.
-    public void AssembleRun(int roomCount, int seed)
+    // consecutiva cuando el pool lo permite. GDD §6.2: la zona activa filtra qué salas
+    // (y qué boss) entran al sorteo — Z1 runs 1-10, Z2 runs 11-20, Z3 runs 21-30
+    // (RunManager.CurrentZoneId() decide el número, acá solo se filtra por él).
+    public void AssembleRun(int roomCount, int seed, int zoneId)
     {
         var rng = new System.Random(seed);
         _runSequence.Clear();
         _carryEchoesAcrossRooms = false;
+        _currentZoneId = zoneId;
 
-        var soloRooms = _pool.FindAll(r => r.data.mechanic == PrimaryMechanic.SOLO);
-        var nonSolo = _pool.FindAll(r => r.data.mechanic != PrimaryMechanic.SOLO);
+        var zonePool = _pool.FindAll(r => r.data.zoneId == zoneId);
+        var soloRooms = zonePool.FindAll(r => r.data.mechanic == PrimaryMechanic.SOLO);
+        var nonSolo = zonePool.FindAll(r => r.data.mechanic != PrimaryMechanic.SOLO);
 
         RoomInstance firstRoom = soloRooms.Count > 0 ? soloRooms[rng.Next(soloRooms.Count)] : null;
         if (firstRoom != null) _runSequence.Add(firstRoom);
@@ -109,7 +119,9 @@ public class RoomAssembler : MonoBehaviour
             remaining.Remove(pick);
         }
 
-        if (_bossRoom != null) _runSequence.Add(_bossRoom);
+        var bossRoom = _bossRooms.Find(r => r.data.zoneId == zoneId);
+        if (bossRoom != null) _runSequence.Add(bossRoom);
+        else Debug.LogWarning($"[RoomAssembler] No hay boss registrado para zona {zoneId} — la run termina sin boss.");
 
         _currentIndex = -1;
         LoadNext();
@@ -169,12 +181,13 @@ public class RoomAssembler : MonoBehaviour
         var usedIds = new HashSet<string>();
         foreach (var r in _runSequence) usedIds.Add(r.data.roomId);
 
-        var candidates = _pool.FindAll(r => r.data.mechanic == PrimaryMechanic.SOLO
+        var candidates = _pool.FindAll(r => r.data.zoneId == _currentZoneId && r.data.mechanic == PrimaryMechanic.SOLO
             && r.data.difficultyTier <= 1 && !usedIds.Contains(r.data.roomId));
         if (candidates.Count == 0) return;
 
         var bonusRoom = candidates[UnityEngine.Random.Range(0, candidates.Count)];
-        int insertAt = _bossRoom != null ? _runSequence.Count - 1 : _runSequence.Count;
+        bool lastIsBoss = _runSequence.Count > 0 && _runSequence[_runSequence.Count - 1].isBoss;
+        int insertAt = lastIsBoss ? _runSequence.Count - 1 : _runSequence.Count;
         insertAt = Mathf.Max(insertAt, _currentIndex + 1);
         _runSequence.Insert(insertAt, bonusRoom);
     }
@@ -226,7 +239,7 @@ public class RoomAssembler : MonoBehaviour
     public bool DebugJumpToRoom(string roomId)
     {
         var target = _pool.Find(r => r.data.roomId == roomId);
-        if (target == null && _bossRoom != null && _bossRoom.data.roomId == roomId) target = _bossRoom;
+        if (target == null) target = _bossRooms.Find(r => r.data.roomId == roomId);
         if (target == null) target = _tutorialRooms.Find(r => r.data.roomId == roomId);
         if (target == null) return false;
 
