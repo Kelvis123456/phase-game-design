@@ -51,8 +51,8 @@ public class TimeManager : MonoBehaviour
 
         UpdatePostProcessing();
 
-        // FMOD: actualizar parámetro si está integrado
-        // FMODUnity.RuntimeManager.StudioSystem.setParameterByName("BulletTimeAmount", 1f - _scales[(int)Layer.Player]);
+        if (Services.TryGet<AudioManager>(out var audio))
+            audio.SetBulletTimeAmount(1f - _scales[(int)Layer.Player]);
     }
 
     private void UpdatePostProcessing()

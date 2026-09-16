@@ -32,6 +32,7 @@ public class BossController : MonoBehaviour
     [SerializeField] private float _phase1TransitionDelay = 2f; // Fase 1 -> 2
     [SerializeField] private float _phase2TransitionDelay = 1f; // Fase 2 -> 3
     [SerializeField] private float _requiredHoldTime = 1f;
+    [SerializeField] private AudioClip _defeatSfx;
 
     private Phase _phase = Phase.Reflejos;
     private float _transitionTimer;
@@ -96,6 +97,7 @@ public class BossController : MonoBehaviour
             if (_holdTimer >= _requiredHoldTime)
             {
                 _phase = Phase.Defeated;
+                if (Services.TryGet<AudioManager>(out var audio)) audio.PlaySfx(_defeatSfx);
                 if (Services.TryGet<RoomAssembler>(out var assembler))
                     assembler.OnBossDefeated();
             }
