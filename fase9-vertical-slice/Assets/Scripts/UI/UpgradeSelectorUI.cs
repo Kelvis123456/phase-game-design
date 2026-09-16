@@ -32,6 +32,11 @@ public class UpgradeSelectorUI : MonoBehaviour
     private void Resolve(RunUpgrade picked)
     {
         _canvas.gameObject.SetActive(false);
+        if (Services.TryGet<AudioManager>(out var audio))
+        {
+            if (picked != null) audio.PlayUpgradeUnlock();
+            else audio.PlayUiCancel();
+        }
         var callback = _onResolved;
         _onResolved = null;
         callback?.Invoke(picked);

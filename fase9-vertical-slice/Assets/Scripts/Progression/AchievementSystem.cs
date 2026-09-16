@@ -48,6 +48,7 @@ public class AchievementSystem : MonoBehaviour
 
             _save.Current.achievements.unlocked.Add(achievement.id);
             OnAchievementUnlocked?.Invoke(achievement);
+            if (Services.TryGet<AudioManager>(out var audio)) audio.PlayAchievementUnlock();
         }
         _save.Save();
     }

@@ -12,6 +12,7 @@ public class TriggerLever : MonoBehaviour
     [SerializeField] private SpriteRenderer _sprite;
     [SerializeField] private Sprite _spriteOff;
     [SerializeField] private Sprite _spriteOn;
+    [SerializeField] private AudioClip _toggleSfx;
 
     public bool IsActive { get; private set; }
 
@@ -48,6 +49,7 @@ public class TriggerLever : MonoBehaviour
             var next = active ? _spriteOn : _spriteOff;
             if (next != null) _sprite.sprite = next;
         }
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlaySfx(_toggleSfx);
         if (_linkedDoor) _linkedDoor.SetHeld(this, active);
         if (_linkedPlatform) _linkedPlatform.SetHeld(this, active);
         if (_linkedFloor) _linkedFloor.SetHeld(this, active);

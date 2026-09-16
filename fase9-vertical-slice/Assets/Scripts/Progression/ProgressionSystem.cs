@@ -123,6 +123,8 @@ public class ProgressionSystem : MonoBehaviour
         OnNodeUnlocked?.Invoke(nodeId);
         _save.Save();
 
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlayNodeUnlock();
+
         if (Services.TryGet<EchoManager>(out var echoManager) && node.branch == "A" && node.id != "A1")
             echoManager.UnlockSlot();
 
