@@ -1,14 +1,17 @@
 using UnityEngine;
 
-// GDD §8.2 Boss 1 "El Espejo Fragmentado" (Zona 1), Fase 1 — un panel de espejo que
-// oscila entre "alineado" (posición A, la palanca sirve) y "lejos" (posición B, la
-// palanca no hace nada) en un período fijo (8s [VS], igual que el GDD). Simplificación
-// de VS: en vez de mover el panel físicamente por el mundo, el oscilador solo decide
-// si la palanca puede activarlo AHORA — el efecto narrativo (leer el timing del
-// oscilador) es el mismo sin necesitar animar geometría real. Una vez activado, se
-// queda así (igual que el latch de DoorGate) — sin esto, 2 ecos sosteniendo 2 palancas
+// GDD §8.2 Boss 1 "El Espejo Fragmentado" (Zona 1) — un panel de espejo que oscila
+// entre "alineado" (posición A, la palanca sirve) y "lejos" (posición B, la palanca no
+// hace nada) en un período fijo (8s [VS], igual que el GDD). Simplificación de VS: en
+// vez de mover el panel físicamente por el mundo, el oscilador solo decide si la
+// palanca puede activarlo AHORA — el efecto narrativo (leer el timing del oscilador)
+// es el mismo sin necesitar animar geometría real. Una vez activado, se queda así
+// (igual que el latch de DoorGate) — sin esto, 2 ecos sosteniendo 2 palancas
 // simultáneamente sería el único momento válido posible, imposible de alinear con un
 // tercer cuerpo (el jugador) en E3 al mismo tiempo.
+//
+// Fase 2 ("Multiplicación"): E4 tiene un contrapeso sobre E2 — ver
+// MirrorCounterweightLink, que llama ForceDeactivate() de abajo para eso.
 [RequireComponent(typeof(SpriteRenderer))]
 public class MirrorPanel : MonoBehaviour
 {
@@ -49,4 +52,9 @@ public class MirrorPanel : MonoBehaviour
         IsActive = false;
         _clock = 0f;
     }
+
+    // Usado por MirrorCounterweightLink cuando su panel contrapeso se activa — a
+    // diferencia de ResetPanel(), no reinicia el reloj del oscilador, solo suelta el
+    // latch (el panel puede volver a alinearse en su próxima ventana normal).
+    public void ForceDeactivate() => IsActive = false;
 }

@@ -906,18 +906,21 @@ public static class VSSceneBuilder
         });
     }
 
-    // GDD §8.2 Boss 1 "El Espejo Fragmentado" (Zona 1), Fase 1 ("Primeros Reflejos"):
-    // 3 paneles de espejo (E1/E2/E3), cada uno con su palanca — el jugador debe leer el
-    // oscilador de cada panel (8s [VS], mitad alineado/mitad no) y coordinar 2 ecos +
-    // su propio cuerpo para tener los 3 activos a la vez, luego pararse en el centro
-    // 1s continuo. Fases 2-3 (contrapeso E4/E2, 5 paneles) quedan fuera de este pase.
+    // GDD §8.2 Boss 1 "El Espejo Fragmentado" (Zona 1), fases 1-3 completas:
+    // Fase 1 "Primeros Reflejos" — 3 paneles de espejo (E1/E2/E3), cada uno con su
+    // palanca — el jugador debe leer el oscilador de cada panel (8s [VS], mitad
+    // alineado/mitad no) y coordinar 2 ecos + su propio cuerpo para tener los 3 activos
+    // a la vez. Fase 2 "Multiplicación" — se revelan E4/E5; E4 tiene un contrapeso
+    // sobre E2 (MirrorCounterweightLink), hace falta un tercer cuerpo para volver a
+    // alinear E2. Fase 3 "La Convergencia" — con los 5 activos, pararse en el centro
+    // 1s continuo. La fase-machine vive en BossController; acá solo se arma la sala.
     private static void BuildBossRoom(RoomAssembler assembler, string roomId, float xOffset)
     {
         var container = new GameObject($"Room_{roomId}");
         container.transform.position = new Vector3(xOffset, 0f, 0f);
         container.AddComponent<RoomVisualTheme>().backgroundColor = new Color(0.10f, 0.06f, 0.03f);
 
-        const float e1X = 4f, e2X = 10f, centerX = 16f, e3X = 22f, floorWidth = 28f;
+        const float e1X = 4f, e2X = 10f, centerX = 16f, e3X = 22f, e4X = 28f, e5X = 34f, floorWidth = 40f;
 
         var floorGO = new GameObject("Floor");
         floorGO.transform.SetParent(container.transform, false);
@@ -931,8 +934,7 @@ public static class VSSceneBuilder
         var floorCol = floorGO.AddComponent<BoxCollider2D>();
         floorCol.size = new Vector2(floorWidth, 2f);
 
-        var panels = new System.Collections.Generic.List<MirrorPanel>();
-        void BuildPanelLever(string label, float x)
+        MirrorPanel BuildPanelLever(string label, float x)
         {
             var leverGO = new GameObject($"Lever_{label}");
             leverGO.transform.SetParent(container.transform, false);
@@ -953,12 +955,17 @@ public static class VSSceneBuilder
             panelSr.sortingLayerName = "Hazard";
             var panel = panelGO.AddComponent<MirrorPanel>();
             SetPrivate(panel, "_lever", lever);
-            panels.Add(panel);
+            return panel;
         }
 
-        BuildPanelLever("E1", e1X);
-        BuildPanelLever("E2", e2X);
-        BuildPanelLever("E3", e3X);
+        var phase1Panels = new[] { BuildPanelLever("E1", e1X), BuildPanelLever("E2", e2X), BuildPanelLever("E3", e3X) };
+        var phase2Panels = new[] { BuildPanelLever("E4", e4X), BuildPanelLever("E5", e5X) };
+
+        var counterweightGO = new GameObject("MirrorCounterweightLink_E4toE2");
+        counterweightGO.transform.SetParent(container.transform, false);
+        var counterweight = counterweightGO.AddComponent<MirrorCounterweightLink>();
+        SetPrivate(counterweight, "_triggerPanel", phase2Panels[0]); // E4
+        SetPrivate(counterweight, "_affectedPanel", phase1Panels[1]); // E2
 
         var centerGO = new GameObject("CenterTrigger");
         centerGO.transform.SetParent(container.transform, false);
@@ -974,7 +981,8 @@ public static class VSSceneBuilder
         var bossGO = new GameObject("BossController");
         bossGO.transform.SetParent(container.transform, false);
         var boss = bossGO.AddComponent<BossController>();
-        SetPrivateField(boss, "_panels", panels.ToArray());
+        SetPrivateField(boss, "_phase1Panels", phase1Panels);
+        SetPrivateField(boss, "_phase2Panels", phase2Panels);
         SetPrivate(boss, "_centerTrigger", centerTrigger);
 
         var spawnPoint = new GameObject("SpawnPoint").transform;
@@ -990,7 +998,7 @@ public static class VSSceneBuilder
         data.zoneId = 1;
         data.difficultyTier = 8;
         data.mechanic = PrimaryMechanic.SYNC;
-        data.ecoCountRequired = 2;
+        data.ecoCountRequired = 3;
         data.hasAltSolution = false;
         data.introRunMin = 1;
         AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
