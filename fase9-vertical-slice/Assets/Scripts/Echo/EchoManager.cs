@@ -81,7 +81,7 @@ public class EchoManager : MonoBehaviour
         float speedMultiplier = run != null ? run.ActiveUpgrades.echoSpeedMultiplier : 1f;
 
         var echo = RentFromPool();
-        echo.Initialize(recording, EchoColors[_activeCount], _activeCount, speedMultiplier);
+        echo.Initialize(recording, EchoColors[_activeCount], _activeCount, speedMultiplier, SkinVisualForSlot(_activeCount));
         _slots[_activeCount] = echo;
         _activeCount++;
 
@@ -93,10 +93,20 @@ public class EchoManager : MonoBehaviour
         {
             _hasDuplicatedFirstEchoThisRun = true;
             var dupEcho = RentFromPool();
-            dupEcho.Initialize(recording, EchoColors[_activeCount], _activeCount, speedMultiplier);
+            dupEcho.Initialize(recording, EchoColors[_activeCount], _activeCount, speedMultiplier, SkinVisualForSlot(_activeCount));
             _slots[_activeCount] = dupEcho;
             _activeCount++;
         }
+    }
+
+    // GDD §4.2 "MIS ECOS": cada slot puede tener su propia skin equipada (ProgressionSystem)
+    // — null si es "C1" Eco Base o si el jugador no tiene ProgressionSystem todavía (VS sin
+    // menú de progresión activo), y ahí se usa el color por slot de siempre sin cambios.
+    private SkinCatalog.SkinVisual SkinVisualForSlot(int slot)
+    {
+        if (!Services.TryGet<ProgressionSystem>(out var progression)) return null;
+        string skinId = progression.GetEquippedSkin(slot);
+        return SkinCatalog.Get(skinId);
     }
 
     public void ResetForNewRun() => _hasDuplicatedFirstEchoThisRun = false;

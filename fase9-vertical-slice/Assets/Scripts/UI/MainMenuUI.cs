@@ -43,6 +43,13 @@ public class MainMenuUI : MonoBehaviour
             screen.Show();
     }
 
+    private void OnShop()
+    {
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlayUiConfirm();
+        if (Services.TryGet<EchoShopUI>(out var screen))
+            screen.Show();
+    }
+
     private void SetGameplayEnabled(bool active)
     {
         if (Services.TryGet<PlayerController>(out var player)) player.enabled = active;
@@ -98,7 +105,7 @@ public class MainMenuUI : MonoBehaviour
         playLabelRt.offsetMax = Vector2.zero;
 
         // GDD §11.5.1: fila de botones secundarios (Opciones | Logros | Tienda
-        // Permanente) — solo Logros existe todavía; Opciones y Tienda quedan fuera.
+        // Permanente) — Logros y Tienda existen; Opciones queda fuera.
         var achievementsGO = new GameObject("AchievementsButton");
         achievementsGO.transform.SetParent(canvasGO.transform, false);
         var achievementsImg = achievementsGO.AddComponent<Image>();
@@ -126,6 +133,33 @@ public class MainMenuUI : MonoBehaviour
         achievementsLabelRt.offsetMin = Vector2.zero;
         achievementsLabelRt.offsetMax = Vector2.zero;
 
+        var shopGO = new GameObject("ShopButton");
+        shopGO.transform.SetParent(canvasGO.transform, false);
+        var shopImg = shopGO.AddComponent<Image>();
+        shopImg.color = new Color(1f, 1f, 1f, 0f);
+        var shopBtn = shopGO.AddComponent<Button>();
+        shopBtn.onClick.AddListener(OnShop);
+        var shopRt = shopGO.GetComponent<RectTransform>();
+        shopRt.anchorMin = new Vector2(0.5f, 0f);
+        shopRt.anchorMax = new Vector2(0.5f, 0f);
+        shopRt.pivot = new Vector2(0.5f, 0f);
+        shopRt.sizeDelta = new Vector2(140f, 30f);
+        shopRt.anchoredPosition = new Vector2(0f, 60f);
+
+        var shopLabelGO = new GameObject("Label");
+        shopLabelGO.transform.SetParent(shopGO.transform, false);
+        var shopLabel = shopLabelGO.AddComponent<Text>();
+        shopLabel.text = "Mis Ecos";
+        shopLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        shopLabel.fontSize = 16;
+        shopLabel.alignment = TextAnchor.MiddleCenter;
+        shopLabel.color = new Color(0.75f, 0.78f, 0.85f, 0.85f);
+        var shopLabelRt = shopLabelGO.GetComponent<RectTransform>();
+        shopLabelRt.anchorMin = Vector2.zero;
+        shopLabelRt.anchorMax = Vector2.one;
+        shopLabelRt.offsetMin = Vector2.zero;
+        shopLabelRt.offsetMax = Vector2.zero;
+
         var quitGO = new GameObject("QuitButton");
         quitGO.transform.SetParent(canvasGO.transform, false);
         var quitImg = quitGO.AddComponent<Image>();
@@ -137,7 +171,7 @@ public class MainMenuUI : MonoBehaviour
         quitRt.anchorMax = new Vector2(0.5f, 0f);
         quitRt.pivot = new Vector2(0.5f, 0f);
         quitRt.sizeDelta = new Vector2(140f, 30f);
-        quitRt.anchoredPosition = new Vector2(0f, 60f);
+        quitRt.anchoredPosition = new Vector2(0f, 20f);
 
         var quitLabelGO = new GameObject("Label");
         quitLabelGO.transform.SetParent(quitGO.transform, false);

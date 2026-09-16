@@ -337,6 +337,14 @@ public static class VSSceneBuilder
         var achievementsScreenGO = new GameObject("AchievementsScreenUI");
         achievementsScreenGO.AddComponent<AchievementsScreenUI>();
 
+        // Fase 10 M5.1/M5.2 (GDD §9.2): monetización real (flujo de compra + persistencia)
+        // con un provider de tienda stub — ver IPurchaseProvider para por qué.
+        var monetizationGO = new GameObject("MonetizationSystem");
+        monetizationGO.AddComponent<MonetizationSystem>();
+
+        var echoShopGO = new GameObject("EchoShopUI");
+        echoShopGO.AddComponent<EchoShopUI>();
+
         var mainMenuGO = new GameObject("MainMenuUI");
         var mainMenu = mainMenuGO.AddComponent<MainMenuUI>();
         SetPrivate(mainMenu, "_background", keyartSprite);

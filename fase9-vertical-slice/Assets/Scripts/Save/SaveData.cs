@@ -27,6 +27,11 @@ public class SaveData
         public int totalRunsAttempted;
         public int phaseCrystalBalance;
         public bool tutorialCompleted; // GDD §5 — Run 1 es siempre el tutorial hasta que esto sea true
+
+        // GDD §4.2 "MIS ECOS": skin (nodo Rama C) asignada a cada uno de los 5 slots de
+        // eco, independiente de qué skins están desbloqueadas. "C1" (Eco Base) es el
+        // default gratuito — nunca queda un slot sin skin asignada.
+        public List<string> equippedSkinPerSlot = new List<string> { "C1", "C1", "C1", "C1", "C1" };
     }
 
     [Serializable]
