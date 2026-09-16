@@ -79,6 +79,14 @@ public class DebugHUD : MonoBehaviour
         {
             monB.PurchaseSkin("skin_c4", ok => _lastAction = $"B: PurchaseSkin(skin_c4) -> {ok}");
         }
+        if (Input.GetKeyDown(KeyCode.P) && Services.TryGet<SaveSystem>(out var saveP))
+        {
+            var prefs = saveP.Current.accessibilityPrefs;
+            int idx = (System.Array.IndexOf(ColorblindPalette.AllModes, prefs.colorblindMode) + 1) % ColorblindPalette.AllModes.Length;
+            prefs.colorblindMode = ColorblindPalette.AllModes[idx];
+            saveP.Save();
+            _lastAction = $"P: colorblindMode -> {prefs.colorblindMode}";
+        }
     }
 
     // Ayuda de QA: aplicar un upgrade específico por id sin pasar por el sorteo 2-de-N
@@ -136,7 +144,9 @@ public class DebugHUD : MonoBehaviour
             ? $"adsRemoved={progMon.IsNodeUnlocked("D2")} skins=[{progMon.GetEquippedSkin(0)},{progMon.GetEquippedSkin(1)},{progMon.GetEquippedSkin(2)},{progMon.GetEquippedSkin(3)},{progMon.GetEquippedSkin(4)}] owned=[C4:{progMon.IsNodeUnlocked("C4")} C7:{progMon.IsNodeUnlocked("C7")} C8:{progMon.IsNodeUnlocked("C8")} C10:{progMon.IsNodeUnlocked("C10")}]"
             : "NULL";
 
-        GUI.Box(new Rect(5, 5, 900, 444), "");
+        string colorblindText = Services.TryGet<SaveSystem>(out var saveA11y) ? saveA11y.Current.accessibilityPrefs.colorblindMode : "NULL";
+
+        GUI.Box(new Rect(5, 5, 900, 468), "");
         GUI.Label(new Rect(15, 10, 680, 24), $"frame={_frameCount} t={Time.time:F2} dt={Time.deltaTime:F4}", style);
         GUI.Label(new Rect(15, 34, 680, 24), $"player.pos={posText}", style);
         GUI.Label(new Rect(15, 58, 680, 24), $"rb.pos={rbText}", style);
@@ -152,5 +162,6 @@ public class DebugHUD : MonoBehaviour
         GUI.Label(new Rect(15, 298, 880, 24), $"ActiveUpgrades: {upgradesText}", style);
         GUI.Label(new Rect(15, 322, 880, 90), $"Boss: {bossText}", style);
         GUI.Label(new Rect(15, 414, 880, 24), $"Monetization: {monetizationText}", style);
+        GUI.Label(new Rect(15, 438, 880, 24), $"Accessibility: colorblindMode={colorblindText}", style);
     }
 }
