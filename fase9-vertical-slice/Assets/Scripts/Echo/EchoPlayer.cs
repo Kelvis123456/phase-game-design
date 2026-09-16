@@ -9,6 +9,7 @@ public class EchoPlayer : MonoBehaviour
     [Header("References")]
     [SerializeField] private SpriteRenderer _sprite;
     [SerializeField] private Animator _animator;
+    [SerializeField] private TrailRenderer _trail; // R06 Persistencia Ampliada (GDD §7.3)
 
     // Nombres de los parámetros del Echo Shader (deben coincidir con EchoShader.shader)
     private static readonly int ShaderColor = Shader.PropertyToID("_EchoColor");
@@ -29,6 +30,11 @@ public class EchoPlayer : MonoBehaviour
     private int _slotIndex;
     private float _speedMultiplier = 1f;
 
+    // R06 Persistencia Ampliada: rastro visible solo en bullet-time (ayuda a leer la
+    // ruta del eco mientras el tiempo está lento, no en juego normal a velocidad real
+    // donde solo sería ruido visual). La duración base se dobla si el upgrade está activo.
+    private const float BaseTrailTime = 0.5f;
+
     public void Initialize(InputRecorder.Snapshot[] recording, Color color, int slotIndex, float speedMultiplier = 1f)
     {
         _recording = recording;
@@ -44,11 +50,21 @@ public class EchoPlayer : MonoBehaviour
         _mat.SetFloat(ShaderOpacity, GetOpacityForSlot(slotIndex));
         _sprite.material = _mat;
 
+        if (_trail != null)
+        {
+            _trail.Clear();
+            _trail.emitting = false;
+            _trail.startColor = new Color(color.r, color.g, color.b, 0.6f);
+            _trail.endColor = new Color(color.r, color.g, color.b, 0f);
+        }
+
         gameObject.SetActive(true);
     }
 
     private void Update()
     {
+        UpdateTrail();
+
         if (_recording == null || _recording.Length == 0) return;
 
         // Echo siempre ignora bullet-time; R01/R02 (echoSpeedMultiplier) sí lo escalan.
@@ -59,6 +75,18 @@ public class EchoPlayer : MonoBehaviour
 
         _frameIndex = (_frameIndex + 1) % _recording.Length;
         ApplySnapshot(_recording[_frameIndex]);
+    }
+
+    private void UpdateTrail()
+    {
+        if (_trail == null || _timeManager == null) return;
+
+        bool bulletTime = _timeManager.IsBulletTimeActive;
+        _trail.emitting = bulletTime;
+        if (!bulletTime) return;
+
+        float mult = Services.TryGet<RunManager>(out var run) ? run.ActiveUpgrades.echoTrailDurationMultiplier : 1f;
+        _trail.time = BaseTrailTime * mult;
     }
 
     private void ApplySnapshot(InputRecorder.Snapshot snap)
@@ -95,6 +123,7 @@ public class EchoPlayer : MonoBehaviour
             vfx.Play("EchoDissolve", transform.position, _mat.GetColor(ShaderColor));
 
         _recording = null;
+        if (_trail != null) _trail.emitting = false;
         StartCoroutine(RecycleAfterFade(0.4f));
     }
 

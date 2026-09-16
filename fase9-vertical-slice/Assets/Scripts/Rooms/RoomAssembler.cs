@@ -163,6 +163,12 @@ public class RoomAssembler : MonoBehaviour
             if (theme != null) _camera.backgroundColor = theme.backgroundColor;
         }
 
+        // R10 Revelación (GDD §7.3): pulso de 2s en cada palanca de la sala recién
+        // activada — pista visual para un jugador atorado, ver TriggerLever.PlayRevealPulse.
+        if (Services.TryGet<RunManager>(out var runForReveal) && runForReveal.ActiveUpgrades.revealFutureTriggersEnabled)
+            foreach (var lever in next.container.GetComponentsInChildren<TriggerLever>(true))
+                lever.PlayRevealPulse(2f);
+
         if (!_carryEchoesAcrossRooms) _echoManager.ClearAllEchos();
         _loopTimer.StartLoop();
 

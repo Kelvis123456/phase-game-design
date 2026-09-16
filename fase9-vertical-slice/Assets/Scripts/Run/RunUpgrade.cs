@@ -31,4 +31,7 @@ public class RunUpgradeEffects
     public bool bonusRoomRequested = false;       // R07 Sala Bonus (se consume una vez aplicado)
     public bool roomRestartAvailable = false;     // R08 Reinicio de Sala (se consume al usarse)
     public bool duplicateFirstEcho = false;       // R09 Eco Duplicado
+    public bool triggerAnticipationEnabled = false; // R05 Trigger Anticipado
+    public float echoTrailDurationMultiplier = 1f;  // R06 Persistencia Ampliada
+    public bool revealFutureTriggersEnabled = false; // R10 Revelación
 }
