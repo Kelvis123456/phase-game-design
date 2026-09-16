@@ -87,6 +87,10 @@ public class DebugHUD : MonoBehaviour
             saveP.Save();
             _lastAction = $"P: colorblindMode -> {prefs.colorblindMode}";
         }
+        if (Input.GetKeyDown(KeyCode.J) && Services.TryGet<MonetizationSystem>(out var monJ))
+        {
+            monJ.PurchaseSeasonPass(ok => _lastAction = $"J: PurchaseSeasonPass() -> {ok}");
+        }
     }
 
     // Ayuda de QA: aplicar un upgrade específico por id sin pasar por el sorteo 2-de-N
@@ -145,8 +149,9 @@ public class DebugHUD : MonoBehaviour
             : "NULL";
 
         string colorblindText = Services.TryGet<SaveSystem>(out var saveA11y) ? saveA11y.Current.accessibilityPrefs.colorblindMode : "NULL";
+        string seasonPassText = Services.TryGet<SeasonPassSystem>(out var sp) ? $"active={sp.IsActive} expires={sp.ExpiresAtUtc}" : "NULL";
 
-        GUI.Box(new Rect(5, 5, 900, 468), "");
+        GUI.Box(new Rect(5, 5, 900, 492), "");
         GUI.Label(new Rect(15, 10, 680, 24), $"frame={_frameCount} t={Time.time:F2} dt={Time.deltaTime:F4}", style);
         GUI.Label(new Rect(15, 34, 680, 24), $"player.pos={posText}", style);
         GUI.Label(new Rect(15, 58, 680, 24), $"rb.pos={rbText}", style);
@@ -163,5 +168,6 @@ public class DebugHUD : MonoBehaviour
         GUI.Label(new Rect(15, 322, 880, 90), $"Boss: {bossText}", style);
         GUI.Label(new Rect(15, 414, 880, 24), $"Monetization: {monetizationText}", style);
         GUI.Label(new Rect(15, 438, 880, 24), $"Accessibility: colorblindMode={colorblindText}", style);
+        GUI.Label(new Rect(15, 462, 880, 24), $"SeasonPass: {seasonPassText}", style);
     }
 }

@@ -2,15 +2,16 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-// GDD §9.2 — las 2 vías de monetización que no dependen de contenido estacional nuevo:
-// vía 1 (Modo Sin Anuncios, $3.99) y vía 2 (skins Premium C4/C7/C8/C10, $0.99-$2.49). La
-// vía 3 (Season Pass "Frecuencia") queda fuera de este pase — necesita su propio sistema
-// de rotación de contenido trimestral (fase10-desarrollo/desarrollo-completo.md M5.3).
+// GDD §9.2 — las 3 vías de monetización: vía 1 (Modo Sin Anuncios, $3.99), vía 2 (skins
+// Premium C4/C7/C8/C10, $0.99-$2.49) y vía 3 (Season Pass "Frecuencia", $4.99/trimestre —
+// solo el estado activo/vencido + compra, ver SeasonPassSystem para qué de esa vía queda
+// fuera y por qué).
 //
 // Usa IPurchaseProvider (stub por defecto, ver ese archivo) — lo real acá es el flujo
 // completo alrededor del pago: catálogo de producto, aplicar el efecto vía
-// ProgressionSystem.UnlockViaPurchase, persistir el estado. El SDK de cobro real
-// (Unity IAP + consola de Google Play / Apple) es trabajo de plataforma pendiente.
+// ProgressionSystem.UnlockViaPurchase/SeasonPassSystem.Activate, persistir el estado. El
+// SDK de cobro real (Unity IAP + consola de Google Play / Apple) es trabajo de plataforma
+// pendiente.
 [DefaultExecutionOrder(-93)]
 public class MonetizationSystem : MonoBehaviour
 {
@@ -33,10 +34,12 @@ public class MonetizationSystem : MonoBehaviour
         { "skin_c7", "$1.49" },
         { "skin_c8", "$1.99" },
         { "skin_c10", "$2.49" },
+        { SeasonPassSystem.ProductId, SeasonPassSystem.DisplayPrice },
     };
 
     private IPurchaseProvider _provider = new StubPurchaseProvider();
     private ProgressionSystem _progression;
+    private SeasonPassSystem _seasonPass;
 
     private void Awake()
     {
@@ -46,6 +49,7 @@ public class MonetizationSystem : MonoBehaviour
     private void Start()
     {
         _progression = Services.Get<ProgressionSystem>();
+        _seasonPass = Services.Get<SeasonPassSystem>();
     }
 
     // Para QA/tests: reemplazar el stub por un provider real o uno de prueba controlado.
@@ -73,6 +77,15 @@ public class MonetizationSystem : MonoBehaviour
         _provider.Purchase(productId, success =>
         {
             if (success) _progression.UnlockViaPurchase(nodeId);
+            onComplete?.Invoke(success);
+        });
+    }
+
+    public void PurchaseSeasonPass(Action<bool> onComplete = null)
+    {
+        _provider.Purchase(SeasonPassSystem.ProductId, success =>
+        {
+            if (success) _seasonPass.Activate();
             onComplete?.Invoke(success);
         });
     }

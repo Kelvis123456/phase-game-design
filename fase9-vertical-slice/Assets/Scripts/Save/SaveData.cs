@@ -32,6 +32,11 @@ public class SaveData
         // eco, independiente de qué skins están desbloqueadas. "C1" (Eco Base) es el
         // default gratuito — nunca queda un slot sin skin asignada.
         public List<string> equippedSkinPerSlot = new List<string> { "C1", "C1", "C1", "C1", "C1" };
+
+        // GDD §9.2 vía 3 "Pase de Temporada" — "" = nunca comprado/vencido. ISO 8601 UTC,
+        // igual que lastSyncedAt/createdAt, para poder comparar contra DateTime.UtcNow sin
+        // ambigüedad de zona horaria.
+        public string seasonPassExpiresAtUtc = "";
     }
 
     [Serializable]
