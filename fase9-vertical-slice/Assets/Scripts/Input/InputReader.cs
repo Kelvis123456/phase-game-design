@@ -89,7 +89,7 @@ public class InputReader : MonoBehaviour
         if (velocity < _btVelocityThreshold)
         {
             _stationaryTimer += Time.deltaTime;
-            if (_stationaryTimer >= _btHoldDuration && !_bulletTimeActive)
+            if (_stationaryTimer >= EffectiveHoldDuration && !_bulletTimeActive)
                 SetBulletTime(true);
         }
         else
@@ -125,10 +125,16 @@ public class InputReader : MonoBehaviour
         else
         {
             _kbStationaryTimer += Time.unscaledDeltaTime;
-            if (_kbStationaryTimer >= _btHoldDuration && !_bulletTimeActive)
+            if (_kbStationaryTimer >= EffectiveHoldDuration && !_bulletTimeActive)
                 SetBulletTime(true);
         }
     }
+
+    // GDD §14.3 — accesibilidad: "Tiempo de carga de bullet-time" (slider 0.1s-0.5s,
+    // default 0.15s = _btHoldDuration de siempre). Jugadores con temblor de manos o
+    // movilidad reducida pueden subirlo para tener más margen antes de que se active.
+    private float EffectiveHoldDuration =>
+        Services.TryGet<SaveSystem>(out var save) ? Mathf.Clamp(save.Current.accessibilityPrefs.btChargeTime, 0.1f, 0.5f) : _btHoldDuration;
 
     private void SetBulletTime(bool active)
     {
