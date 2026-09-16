@@ -277,6 +277,19 @@ public static class VSSceneBuilder
         echoSr.sortingLayerName = "Echo_1";
         var echoPlayer = echoTemplateGO.AddComponent<EchoPlayer>();
         SetPrivate(echoPlayer, "_sprite", echoSr);
+
+        // R06 Persistencia Ampliada (GDD §7.3) — rastro visible solo en bullet-time,
+        // color/duración reales se fijan por eco en EchoPlayer.Initialize()/UpdateTrail().
+        var trail = echoTemplateGO.AddComponent<TrailRenderer>();
+        trail.time = 0.5f;
+        trail.startWidth = 0.35f;
+        trail.endWidth = 0.05f;
+        trail.minVertexDistance = 0.05f;
+        trail.material = new Material(Shader.Find("Sprites/Default"));
+        trail.sortingLayerName = "Echo_2";
+        trail.emitting = false;
+        SetPrivate(echoPlayer, "_trail", trail);
+
         echoTemplateGO.SetActive(false);
 
         // ---- LoopTimer / EchoManager / VSRoomController ----
