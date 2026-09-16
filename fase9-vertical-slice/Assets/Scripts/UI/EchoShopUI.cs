@@ -15,17 +15,20 @@ public class EchoShopUI : MonoBehaviour
     private Canvas _canvas;
     private ProgressionSystem _progression;
     private MonetizationSystem _monetization;
+    private SeasonPassSystem _seasonPass;
 
     private readonly Text[] _slotLabels = new Text[5];
     private Text _adRemovalLabel;
     private Button _adRemovalButton;
     private readonly Dictionary<string, Text> _premiumLabels = new Dictionary<string, Text>();
     private readonly Dictionary<string, Button> _premiumButtons = new Dictionary<string, Button>();
+    private Text _seasonPassLabel;
 
     private void Start()
     {
         _progression = Services.Get<ProgressionSystem>();
         _monetization = Services.Get<MonetizationSystem>();
+        _seasonPass = Services.Get<SeasonPassSystem>();
         BuildUI();
         SetVisible(false);
     }
@@ -111,6 +114,58 @@ public class EchoShopUI : MonoBehaviour
             row2++;
         }
         BuildPurchaseRow(canvasGO.transform, MonetizationSystem.AdRemovalProductId, "Modo Sin Anuncios", row2, () => _monetization.PurchaseAdRemoval(_ => Refresh()));
+        row2++;
+
+        // GDD §9.2 vía 3: solo el estado activo/vencido + compra (ver SeasonPassSystem
+        // para qué de esta vía queda fuera de este pase). Comprar de nuevo extiende el
+        // pase en vez de deshabilitarse — por eso el botón sigue interactuable siempre.
+        var seasonRowGO = new GameObject("PurchaseRow_season_pass");
+        seasonRowGO.transform.SetParent(canvasGO.transform, false);
+        var seasonRowRt = seasonRowGO.AddComponent<RectTransform>();
+        seasonRowRt.anchorMin = new Vector2(0.5f, 1f);
+        seasonRowRt.anchorMax = new Vector2(0.5f, 1f);
+        seasonRowRt.pivot = new Vector2(0.5f, 1f);
+        seasonRowRt.sizeDelta = new Vector2(480f, 36f);
+        seasonRowRt.anchoredPosition = new Vector2(0f, -374f - row2 * 40f);
+
+        var seasonLabelGO = new GameObject("Label");
+        seasonLabelGO.transform.SetParent(seasonRowGO.transform, false);
+        _seasonPassLabel = seasonLabelGO.AddComponent<Text>();
+        _seasonPassLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        _seasonPassLabel.fontSize = 15;
+        _seasonPassLabel.alignment = TextAnchor.MiddleLeft;
+        _seasonPassLabel.color = new Color(1f, 0.85f, 0.4f, 1f);
+        var seasonLabelRt = seasonLabelGO.GetComponent<RectTransform>();
+        seasonLabelRt.anchorMin = new Vector2(0f, 0f);
+        seasonLabelRt.anchorMax = new Vector2(0.7f, 1f);
+        seasonLabelRt.offsetMin = Vector2.zero;
+        seasonLabelRt.offsetMax = Vector2.zero;
+
+        var seasonBuyGO = new GameObject("BuyButton");
+        seasonBuyGO.transform.SetParent(seasonRowGO.transform, false);
+        var seasonBuyImg = seasonBuyGO.AddComponent<Image>();
+        seasonBuyImg.color = new Color(0.86f, 0.91f, 0.96f, 0.95f);
+        var seasonBuyBtn = seasonBuyGO.AddComponent<Button>();
+        seasonBuyBtn.onClick.AddListener(() => _monetization.PurchaseSeasonPass(_ => Refresh()));
+        var seasonBuyRt = seasonBuyGO.GetComponent<RectTransform>();
+        seasonBuyRt.anchorMin = new Vector2(0.72f, 0.1f);
+        seasonBuyRt.anchorMax = new Vector2(1f, 0.9f);
+        seasonBuyRt.offsetMin = Vector2.zero;
+        seasonBuyRt.offsetMax = Vector2.zero;
+
+        var seasonBuyLabelGO = new GameObject("Label");
+        seasonBuyLabelGO.transform.SetParent(seasonBuyGO.transform, false);
+        var seasonBuyLabel = seasonBuyLabelGO.AddComponent<Text>();
+        seasonBuyLabel.text = "Comprar";
+        seasonBuyLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        seasonBuyLabel.fontSize = 13;
+        seasonBuyLabel.alignment = TextAnchor.MiddleCenter;
+        seasonBuyLabel.color = new Color(0.05f, 0.06f, 0.1f, 1f);
+        var seasonBuyLabelRt = seasonBuyLabelGO.GetComponent<RectTransform>();
+        seasonBuyLabelRt.anchorMin = Vector2.zero;
+        seasonBuyLabelRt.anchorMax = Vector2.one;
+        seasonBuyLabelRt.offsetMin = Vector2.zero;
+        seasonBuyLabelRt.offsetMax = Vector2.zero;
 
         AddLabel(canvasGO.transform, "Hint", "M para cerrar — < > para cambiar skin de un slot", 14, new Vector2(0f, 20f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(420f, 24f));
     }
@@ -261,5 +316,9 @@ public class EchoShopUI : MonoBehaviour
                 : $"{node.displayName} — {MonetizationSystem.DisplayPrices[productId]}";
             _premiumButtons[productId].interactable = !owned;
         }
+
+        _seasonPassLabel.text = _seasonPass.IsActive
+            ? $"Pase de Temporada — activo hasta {_seasonPass.ExpiresAtUtc.Value.ToString("dd/MM/yyyy")}"
+            : $"Pase de Temporada — {SeasonPassSystem.DisplayPrice}";
     }
 }
