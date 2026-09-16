@@ -12,6 +12,8 @@ public class DoorGate : MonoBehaviour
     [SerializeField] private SpriteRenderer _sprite;
     [SerializeField] private Sprite _spriteClosed;
     [SerializeField] private Sprite _spriteOpen;
+    [SerializeField] private AudioClip _openSfx;
+    [SerializeField] private AudioClip _closeSfx;
 
     // Fase 10 M2.4 (GDD §6.2 Zona 3 — DEPENDENCY): una vez abierta, se queda abierta
     // el resto del loop en vez de re-cerrarse al soltar la palanca. Esto es lo que
@@ -49,6 +51,7 @@ public class DoorGate : MonoBehaviour
             var next = IsOpen ? _spriteOpen : _spriteClosed;
             if (next != null) _sprite.sprite = next;
         }
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlaySfx(IsOpen ? _openSfx : _closeSfx);
     }
 
     // GDD Sala Tutorial 2 "El Momento No Planeado": el contrapeso de una palanca
@@ -62,5 +65,6 @@ public class DoorGate : MonoBehaviour
         IsOpen = false;
         if (_blocker) _blocker.enabled = true;
         if (_sprite != null && _spriteClosed != null) _sprite.sprite = _spriteClosed;
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlaySfx(_closeSfx);
     }
 }

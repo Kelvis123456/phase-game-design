@@ -18,10 +18,12 @@ public class MainMenuUI : MonoBehaviour
     private void Start()
     {
         SetGameplayEnabled(false);
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlayMenuMusic();
     }
 
     private void OnPlay()
     {
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlayUiConfirm();
         _canvas.gameObject.SetActive(false);
         SetGameplayEnabled(true);
         if (Services.TryGet<RunManager>(out var runManager))
@@ -30,11 +32,13 @@ public class MainMenuUI : MonoBehaviour
 
     private void OnQuit()
     {
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlayUiCancel();
         Application.Quit();
     }
 
     private void OnAchievements()
     {
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlayUiConfirm();
         if (Services.TryGet<AchievementsScreenUI>(out var screen))
             screen.Show();
     }

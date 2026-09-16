@@ -5,6 +5,8 @@ using UnityEngine;
 [RequireComponent(typeof(Collider2D))]
 public class HazardSpike : MonoBehaviour
 {
+    [SerializeField] private AudioClip _hitSfx;
+
     private void Awake()
     {
         var col = GetComponent<Collider2D>();
@@ -15,6 +17,7 @@ public class HazardSpike : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
 
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlaySfx(_hitSfx);
         if (Services.TryGet<PlayerStats>(out var stats))
             stats.TakeDamage();
     }

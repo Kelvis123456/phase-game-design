@@ -33,6 +33,7 @@ public class ProgressionTreeUI : MonoBehaviour
         {
             SetVisible(!_visible);
             if (_visible) Refresh();
+            if (Services.TryGet<AudioManager>(out var audio)) audio.PlayUiNavigate();
         }
     }
 

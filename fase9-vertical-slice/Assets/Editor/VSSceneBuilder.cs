@@ -356,6 +356,10 @@ public static class VSSceneBuilder
         // ---- Fase 10 M2: pool de salas real ----
         BuildRoomPool(cam, playerController, echoManager, loopTimer, spawnGO, gridGO, hazardGO, groundTile);
 
+        // ---- Audio: música + SFX (ver AudioManager.cs — Unity nativo en vez de FMOD,
+        // que requiere FMOD Studio de escritorio para autorear bancos) ----
+        BuildAudio();
+
         // ---- Save scene, register in build settings ----
         EditorSceneManager.SaveScene(scene, ScenePath);
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -363,6 +367,55 @@ public static class VSSceneBuilder
         AssetDatabase.Refresh();
 
         Debug.Log("[VSSceneBuilder] Scene build complete: " + ScenePath);
+    }
+
+    // Construye el AudioManager (música + SFX "globales" de UI/progresión) y después
+    // recorre TODA la escena buscando los objetos de nivel (palancas, puertas, paneles,
+    // pinchos, bosses) ya creados por BuildRoomPool/BuildBossRoom/etc. para asignarles
+    // su clip — evita repetir el wiring de audio en cada uno de los ~12 sitios donde se
+    // instancian esos componentes.
+    private static void BuildAudio()
+    {
+        AudioClip Load(string path) => AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+
+        var audioGO = new GameObject("AudioManager");
+        var audio = audioGO.AddComponent<AudioManager>();
+        SetPrivateField(audio, "_menuTheme", Load("Assets/Audio/Music/menu_theme.mp3"));
+        SetPrivateField(audio, "_zoneAmbient", new[]
+        {
+            Load("Assets/Audio/Music/z1_ambient.mp3"),
+            Load("Assets/Audio/Music/z2_ambient.mp3"),
+            Load("Assets/Audio/Music/z3_ambient.mp3"),
+        });
+        SetPrivateField(audio, "_bossTheme", Load("Assets/Audio/Music/boss_theme.mp3"));
+        SetPrivateField(audio, "_uiConfirmSfx", Load("Assets/Audio/SFX/ui_confirm.mp3"));
+        SetPrivateField(audio, "_uiCancelSfx", Load("Assets/Audio/SFX/ui_cancel.mp3"));
+        SetPrivateField(audio, "_uiNavigateSfx", Load("Assets/Audio/SFX/ui_navigate.mp3"));
+        SetPrivateField(audio, "_nodeUnlockSfx", Load("Assets/Audio/SFX/node_unlock.mp3"));
+        SetPrivateField(audio, "_upgradeUnlockSfx", Load("Assets/Audio/SFX/upgrade_unlock.mp3"));
+        SetPrivateField(audio, "_achievementUnlockSfx", Load("Assets/Audio/SFX/node_unlock.mp3"));
+        SetPrivateField(audio, "_zoneTransitionSfx", Load("Assets/Audio/SFX/zone_transition.mp3"));
+
+        var leverSfx = Load("Assets/Audio/SFX/lever_toggle.ogg");
+        var doorOpenSfx = Load("Assets/Audio/SFX/door_open.ogg");
+        var doorCloseSfx = Load("Assets/Audio/SFX/door_close.ogg");
+        var mirrorActivateSfx = Load("Assets/Audio/SFX/mirror_panel_activate.ogg");
+        var mirrorShatterSfx = Load("Assets/Audio/SFX/mirror_shatter.ogg");
+        var hazardHitSfx = Load("Assets/Audio/SFX/hazard_hit.ogg");
+
+        foreach (var lever in Object.FindObjectsByType<TriggerLever>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            SetPrivate(lever, "_toggleSfx", leverSfx);
+        foreach (var door in Object.FindObjectsByType<DoorGate>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            SetPrivate(door, "_openSfx", doorOpenSfx);
+            SetPrivate(door, "_closeSfx", doorCloseSfx);
+        }
+        foreach (var panel in Object.FindObjectsByType<MirrorPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            SetPrivate(panel, "_activateSfx", mirrorActivateSfx);
+        foreach (var hazard in Object.FindObjectsByType<HazardSpike>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            SetPrivate(hazard, "_hitSfx", hazardHitSfx);
+        foreach (var boss in Object.FindObjectsByType<BossController>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            SetPrivate(boss, "_defeatSfx", mirrorShatterSfx);
     }
 
     // Fase 10 M2: envuelve la sala original como "Room 0" (SOLO, sin palancas) y construye
@@ -483,14 +536,68 @@ public static class VSSceneBuilder
 
         // ---- Zona 3 "Abismo": primeras salas reales de DEPENDENCY y FRUSTRATION
         // (GDD §6.2) — antes ausentes del pool por completo. ----
-        BuildDependencyRoom(assembler, "Z3_DEPENDENCY_01", xOffset: 2750f, lever1X: 4f, door1X: 9f, lever2X: 13f, door2X: 18f, exitX: 21f);
-        BuildDependencyRoom(assembler, "Z3_DEPENDENCY_02", xOffset: 2800f, lever1X: 3f, door1X: 8f, lever2X: 12f, door2X: 17f, exitX: 20f);
+        BuildDependencyRoom(assembler, "Z3_DEPENDENCY_01", xOffset: 2750f, lever1X: 4f, door1X: 9f, lever2X: 13f, door2X: 18f, exitX: 21f, zoneId: 3, backgroundColor: Z3BackgroundColor);
+        BuildDependencyRoom(assembler, "Z3_DEPENDENCY_02", xOffset: 2800f, lever1X: 3f, door1X: 8f, lever2X: 12f, door2X: 17f, exitX: 20f, zoneId: 3, backgroundColor: Z3BackgroundColor);
         BuildFrustrationRoom(assembler, "Z3_FRUSTRATION_01", xOffset: 2850f, hazardStartX: 5f, hazardWidth: 3f, leverX: 10f, doorX: 15f, exitX: 18f);
         BuildFrustrationRoom(assembler, "Z3_FRUSTRATION_02", xOffset: 2900f, hazardStartX: 4f, hazardWidth: 3.5f, leverX: 9f, doorX: 14f, exitX: 17f);
 
         // ---- Boss 1 "El Espejo Fragmentado" (GDD §8.2, Fase 1) — slot fijo al final de
         // cada run, no sale del sorteo aleatorio del pool. ----
         BuildBossRoom(assembler, "Z1_BOSS_ESPEJO_FRAGMENTADO", xOffset: 2950f);
+
+        // ---- Zona 2 "Fracturas" (GDD §6.2): 17 salas — antes 0. DEPENDENCY es el
+        // mecanismo CENTRAL de la zona (8/17), no un extra tardío como en Z1 — pero con
+        // una rampa de 2-3 salas suaves antes de escalar (Z2_DEPENDENCY_01-03), como
+        // pide la spec, en vez de comprimirlo. SOLO/SYNC calientan con la geometría y
+        // el tema visual nuevos antes de exigir coordinación real. ----
+        BuildTraversalRoomZ2(assembler, "Z2_SOLO_01", xOffset: 3000f, length: 16f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoomZ2(assembler, "Z2_SOLO_02", xOffset: 3060f, length: 20f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+
+        BuildSyncRoomZ2(assembler, "Z2_SYNC_01", xOffset: 3120f, leverX: 5f, doorX: 13f, exitX: 16f);
+        BuildSyncRoomZ2(assembler, "Z2_SYNC_02", xOffset: 3180f, leverX: 4f, doorX: 11f, exitX: 14f);
+        BuildSyncRoomZ2(assembler, "Z2_SYNC_03", xOffset: 3240f, leverX: 6f, doorX: 15f, exitX: 18f);
+
+        // Rampa suave (GDD "segunda pared de aprendizaje"): timing generoso al principio,
+        // se aprieta hacia Z2_DEPENDENCY_08.
+        BuildDependencyRoom(assembler, "Z2_DEPENDENCY_01", xOffset: 3300f, lever1X: 4f, door1X: 8f, lever2X: 11f, door2X: 15f, exitX: 18f, zoneId: 2, backgroundColor: Z2BackgroundColor);
+        BuildDependencyRoom(assembler, "Z2_DEPENDENCY_02", xOffset: 3360f, lever1X: 4f, door1X: 9f, lever2X: 12f, door2X: 16f, exitX: 19f, zoneId: 2, backgroundColor: Z2BackgroundColor);
+        BuildDependencyRoom(assembler, "Z2_DEPENDENCY_03", xOffset: 3420f, lever1X: 3f, door1X: 8f, lever2X: 12f, door2X: 17f, exitX: 20f, zoneId: 2, backgroundColor: Z2BackgroundColor);
+        BuildDependencyRoom(assembler, "Z2_DEPENDENCY_04", xOffset: 3480f, lever1X: 3f, door1X: 7f, lever2X: 10f, door2X: 14f, exitX: 17f, zoneId: 2, backgroundColor: Z2BackgroundColor);
+        BuildDependencyRoom(assembler, "Z2_DEPENDENCY_05", xOffset: 3540f, lever1X: 4f, door1X: 8f, lever2X: 11f, door2X: 15f, exitX: 18f, zoneId: 2, backgroundColor: Z2BackgroundColor);
+        BuildDependencyRoom(assembler, "Z2_DEPENDENCY_06", xOffset: 3600f, lever1X: 3f, door1X: 7f, lever2X: 10f, door2X: 13f, exitX: 16f, zoneId: 2, backgroundColor: Z2BackgroundColor);
+        BuildDependencyRoom(assembler, "Z2_DEPENDENCY_07", xOffset: 3660f, lever1X: 3f, door1X: 6f, lever2X: 9f, door2X: 12f, exitX: 15f, zoneId: 2, backgroundColor: Z2BackgroundColor);
+        BuildDependencyRoom(assembler, "Z2_DEPENDENCY_08", xOffset: 3720f, lever1X: 2f, door1X: 5f, lever2X: 8f, door2X: 11f, exitX: 14f, zoneId: 2, backgroundColor: Z2BackgroundColor);
+
+        BuildTraversalRoomZ2(assembler, "Z2_TIMING_01", xOffset: 3780f, length: 18f, hasGap: true, gapStart: 8f, gapWidth: 3f);
+        BuildTraversalRoomZ2(assembler, "Z2_TIMING_02", xOffset: 3830f, length: 22f, hasGap: true, gapStart: 10f, gapWidth: 3.5f);
+        BuildTraversalRoomZ2(assembler, "Z2_TIMING_03", xOffset: 3880f, length: 20f, hasGap: true, gapStart: 9f, gapWidth: 4f);
+
+        BuildTraversalRoomZ2(assembler, "Z2_SOLO_03", xOffset: 3930f, length: 14f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+
+        // ---- Boss Z2 "La Fractura" (GDD §8.3) — slot fijo de Zona 2. ----
+        BuildBossRoomZ2(assembler, "Z2_BOSS_LA_FRACTURA", xOffset: 3990f);
+
+        // ---- Zona 3 "Abismo" (GDD §6.2, desarrollo-completo.md §2.4): completa el pool
+        // a 15 salas — antes solo 4 (2 DEPENDENCY + 2 FRUSTRATION). DEPENDENCY y
+        // FRUSTRATION siguen dominando (10/15) porque son la identidad de la zona, con
+        // algo de SOLO/SYNC para respirar entre salas duras, igual que Z1/Z2. ----
+        BuildTraversalRoomZ3(assembler, "Z3_SOLO_01", xOffset: 4050f, length: 16f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoomZ3(assembler, "Z3_SOLO_02", xOffset: 4110f, length: 20f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+        BuildTraversalRoomZ3(assembler, "Z3_SOLO_03", xOffset: 4170f, length: 18f, hasGap: false, gapStart: 0f, gapWidth: 0f);
+
+        BuildSyncRoomZ3(assembler, "Z3_SYNC_01", xOffset: 4230f, leverX: 5f, doorX: 13f, exitX: 16f);
+        BuildSyncRoomZ3(assembler, "Z3_SYNC_02", xOffset: 4290f, leverX: 4f, doorX: 11f, exitX: 14f);
+
+        BuildDependencyRoom(assembler, "Z3_DEPENDENCY_03", xOffset: 4350f, lever1X: 4f, door1X: 9f, lever2X: 13f, door2X: 18f, exitX: 21f, zoneId: 3, backgroundColor: Z3BackgroundColor);
+        BuildDependencyRoom(assembler, "Z3_DEPENDENCY_04", xOffset: 4400f, lever1X: 3f, door1X: 7f, lever2X: 10f, door2X: 14f, exitX: 17f, zoneId: 3, backgroundColor: Z3BackgroundColor);
+        BuildDependencyRoom(assembler, "Z3_DEPENDENCY_05", xOffset: 4450f, lever1X: 3f, door1X: 6f, lever2X: 9f, door2X: 12f, exitX: 15f, zoneId: 3, backgroundColor: Z3BackgroundColor);
+
+        BuildFrustrationRoom(assembler, "Z3_FRUSTRATION_03", xOffset: 4500f, hazardStartX: 5f, hazardWidth: 3f, leverX: 10f, doorX: 15f, exitX: 18f);
+        BuildFrustrationRoom(assembler, "Z3_FRUSTRATION_04", xOffset: 4550f, hazardStartX: 4f, hazardWidth: 3.5f, leverX: 9f, doorX: 14f, exitX: 17f);
+        BuildFrustrationRoom(assembler, "Z3_FRUSTRATION_05", xOffset: 4600f, hazardStartX: 6f, hazardWidth: 4f, leverX: 11f, doorX: 16f, exitX: 19f);
+
+        // ---- Boss Z3 "El Abismo" (GDD §8.3) — slot fijo de Zona 3. ----
+        BuildBossRoomZ3(assembler, "Z3_BOSS_EL_ABISMO", xOffset: 4660f);
 
         // ---- Tutorial (GDD §5) — 4 salas fijas, solo para la primera run del jugador.
         // Nunca salen del sorteo del pool normal. ----
@@ -669,7 +776,170 @@ public static class VSSceneBuilder
         });
     }
 
+    // GDD §6.2 Zona 2 "Fracturas": vidrio roto, geometría irregular — azul-gris frío,
+    // distinto del marrón/dorado de Z1 y del púrpura oscuro de Z3.
+    private static readonly Color Z2BackgroundColor = new Color(0.04f, 0.08f, 0.12f);
     private static readonly Color Z3BackgroundColor = new Color(0.07f, 0.02f, 0.13f);
+
+    // Copias de BuildTraversalRoom/BuildSyncRoom (Z1) para Z2 — no generalizo esas dos
+    // en vez de esto porque tienen ~30 call-sites cada una ya probados; agregar un
+    // parámetro de zona ahí sería un diff mucho más grande e innecesario para 6 salas
+    // nuevas. Misma lógica, solo zoneId=2 y el tema visual de Fracturas.
+    private static void BuildTraversalRoomZ2(RoomAssembler assembler, string roomId, float xOffset,
+        float length, bool hasGap, float gapStart, float gapWidth)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+        container.AddComponent<RoomVisualTheme>().backgroundColor = Z2BackgroundColor;
+
+        void AddFloorSegment(float startX, float endX)
+        {
+            float w = endX - startX;
+            if (w <= 0f) return;
+            var segGO = new GameObject($"Floor_{startX:F0}_{endX:F0}");
+            segGO.transform.SetParent(container.transform, false);
+            segGO.transform.localPosition = new Vector3(startX + w * 0.5f, 0f, 0f);
+            segGO.layer = LayerMask.NameToLayer("Ground");
+            var sr = segGO.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+            sr.sortingLayerName = "Terrain";
+            sr.drawMode = SpriteDrawMode.Tiled;
+            sr.size = new Vector2(w, 2f);
+            var col = segGO.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(w, 2f);
+        }
+
+        if (hasGap)
+        {
+            AddFloorSegment(0f, gapStart);
+            AddFloorSegment(gapStart + gapWidth, length);
+
+            var voidGO = new GameObject("VoidKillZone");
+            voidGO.transform.SetParent(container.transform, false);
+            voidGO.transform.localPosition = new Vector3(gapStart + gapWidth * 0.5f, -15f, 0f);
+            voidGO.layer = LayerMask.NameToLayer("Hazard");
+            var voidCol = voidGO.AddComponent<BoxCollider2D>();
+            voidCol.size = new Vector2(gapWidth + 6f, 4f);
+            voidGO.AddComponent<HazardSpike>();
+        }
+        else
+        {
+            AddFloorSegment(0f, length);
+        }
+
+        var exitGO = new GameObject("RoomExit");
+        exitGO.transform.SetParent(container.transform, false);
+        exitGO.transform.localPosition = new Vector3(length - 1f, 1f, 0f);
+        var exitCol = exitGO.AddComponent<BoxCollider2D>();
+        exitCol.size = new Vector2(1.5f, 3f);
+        exitGO.AddComponent<RoomExit>();
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(length * 0.4f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 2;
+        data.difficultyTier = hasGap ? 4 : 3;
+        data.mechanic = hasGap ? PrimaryMechanic.TIMING : PrimaryMechanic.SOLO;
+        data.ecoCountRequired = 0;
+        data.hasAltSolution = true;
+        data.introRunMin = 11;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
+    }
+
+    private static void BuildSyncRoomZ2(RoomAssembler assembler, string roomId,
+        float xOffset, float leverX, float doorX, float exitX)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+        container.AddComponent<RoomVisualTheme>().backgroundColor = Z2BackgroundColor;
+
+        float floorWidth = exitX + 4f;
+        var floorGO = new GameObject("Floor");
+        floorGO.transform.SetParent(container.transform, false);
+        floorGO.transform.localPosition = new Vector3(floorWidth * 0.5f, 0f, 0f);
+        floorGO.layer = LayerMask.NameToLayer("Ground");
+        var floorSr = floorGO.AddComponent<SpriteRenderer>();
+        floorSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+        floorSr.sortingLayerName = "Terrain";
+        floorSr.drawMode = SpriteDrawMode.Tiled;
+        floorSr.size = new Vector2(floorWidth, 2f);
+        var floorCol = floorGO.AddComponent<BoxCollider2D>();
+        floorCol.size = new Vector2(floorWidth, 2f);
+
+        var leverGO = new GameObject("Lever");
+        leverGO.transform.SetParent(container.transform, false);
+        leverGO.transform.localPosition = new Vector3(leverX, 1.5f, 0f);
+        var leverSr = leverGO.AddComponent<SpriteRenderer>();
+        leverSr.sprite = _leverOffSprite;
+        leverSr.sortingLayerName = "Hazard";
+        leverGO.AddComponent<BoxCollider2D>();
+        var lever = leverGO.AddComponent<TriggerLever>();
+        SetPrivate(lever, "_spriteOff", _leverOffSprite);
+        SetPrivate(lever, "_spriteOn", _leverOnSprite);
+
+        var doorGO = new GameObject("Door");
+        doorGO.transform.SetParent(container.transform, false);
+        doorGO.transform.localPosition = new Vector3(doorX, 1.5f, 0f);
+        doorGO.layer = LayerMask.NameToLayer("Ground");
+        var doorSr = doorGO.AddComponent<SpriteRenderer>();
+        doorSr.sprite = _doorClosedSprite;
+        doorSr.sortingLayerName = "Hazard";
+        doorGO.transform.localScale = new Vector3(1f, 1.5f, 1f);
+        doorGO.AddComponent<BoxCollider2D>();
+        var door = doorGO.AddComponent<DoorGate>();
+        SetPrivate(door, "_spriteClosed", _doorClosedSprite);
+        SetPrivate(door, "_spriteOpen", _doorOpenSprite);
+        SetPrivate(lever, "_linkedDoor", door);
+
+        var exitGO = new GameObject("RoomExit");
+        exitGO.transform.SetParent(container.transform, false);
+        exitGO.transform.localPosition = new Vector3(exitX, 1f, 0f);
+        var exitCol = exitGO.AddComponent<BoxCollider2D>();
+        exitCol.size = new Vector2(1.5f, 3f);
+        var exit = exitGO.AddComponent<RoomExit>();
+        SetPrivate(exit, "_requiredDoor", door);
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(floorWidth * 0.4f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 2;
+        data.difficultyTier = 4;
+        data.mechanic = PrimaryMechanic.SYNC;
+        data.ecoCountRequired = 1;
+        data.hasAltSolution = false;
+        data.introRunMin = 11;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
+    }
 
     // GDD §6.2 Zona 3 "Abismo" + §6.1: dos puertas en serie. La primera (D1) es
     // "latching" — una vez abierta por la palanca queda abierta el resto del intento,
@@ -678,12 +948,17 @@ public static class VSSceneBuilder
     // el jugador cruza D2, lo cual solo es posible con el eco de un loop anterior
     // sosteniéndola. La cadena real: L1 tuvo que resolverse ANTES de que el intento
     // de sync en L2/D2 tenga sentido — de ahí "DEPENDENCY" en vez de un SYNC más.
+    // zoneId/backgroundColor parametrizados: originalmente solo Z3 la usaba, pero GDD
+    // §6.2 hace de DEPENDENCY el mecanismo CENTRAL de Z2 "Fracturas" — mismo patrón de
+    // sala, distinta zona/tema. Los 2 call-sites originales de Z3 pasan sus valores
+    // explícitos así que no cambian de comportamiento.
     private static void BuildDependencyRoom(RoomAssembler assembler, string roomId, float xOffset,
-        float lever1X, float door1X, float lever2X, float door2X, float exitX)
+        float lever1X, float door1X, float lever2X, float door2X, float exitX,
+        int zoneId, Color backgroundColor)
     {
         var container = new GameObject($"Room_{roomId}");
         container.transform.position = new Vector3(xOffset, 0f, 0f);
-        container.AddComponent<RoomVisualTheme>().backgroundColor = Z3BackgroundColor;
+        container.AddComponent<RoomVisualTheme>().backgroundColor = backgroundColor;
 
         float floorWidth = exitX + 4f;
         var floorGO = new GameObject("Floor");
@@ -749,7 +1024,7 @@ public static class VSSceneBuilder
 
         var data = ScriptableObject.CreateInstance<RoomData>();
         data.roomId = roomId;
-        data.zoneId = 3;
+        data.zoneId = zoneId;
         data.difficultyTier = 6;
         data.mechanic = PrimaryMechanic.DEPENDENCY;
         data.ecoCountRequired = 1;
@@ -866,18 +1141,469 @@ public static class VSSceneBuilder
         });
     }
 
-    // GDD §8.2 Boss 1 "El Espejo Fragmentado" (Zona 1), Fase 1 ("Primeros Reflejos"):
-    // 3 paneles de espejo (E1/E2/E3), cada uno con su palanca — el jugador debe leer el
-    // oscilador de cada panel (8s [VS], mitad alineado/mitad no) y coordinar 2 ecos +
-    // su propio cuerpo para tener los 3 activos a la vez, luego pararse en el centro
-    // 1s continuo. Fases 2-3 (contrapeso E4/E2, 5 paneles) quedan fuera de este pase.
+    // Copias de BuildTraversalRoomZ2/BuildSyncRoomZ2 para Z3 — mismo razonamiento: cada
+    // zona tiene su propia función en vez de parametrizar zoneId en las ~30 call-sites
+    // de Z1. Tema visual: Z3BackgroundColor (espacio-tiempo distorsionado, negro/púrpura).
+    private static void BuildTraversalRoomZ3(RoomAssembler assembler, string roomId, float xOffset,
+        float length, bool hasGap, float gapStart, float gapWidth)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+        container.AddComponent<RoomVisualTheme>().backgroundColor = Z3BackgroundColor;
+
+        void AddFloorSegment(float startX, float endX)
+        {
+            float w = endX - startX;
+            if (w <= 0f) return;
+            var segGO = new GameObject($"Floor_{startX:F0}_{endX:F0}");
+            segGO.transform.SetParent(container.transform, false);
+            segGO.transform.localPosition = new Vector3(startX + w * 0.5f, 0f, 0f);
+            segGO.layer = LayerMask.NameToLayer("Ground");
+            var sr = segGO.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+            sr.sortingLayerName = "Terrain";
+            sr.drawMode = SpriteDrawMode.Tiled;
+            sr.size = new Vector2(w, 2f);
+            var col = segGO.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(w, 2f);
+        }
+
+        if (hasGap)
+        {
+            AddFloorSegment(0f, gapStart);
+            AddFloorSegment(gapStart + gapWidth, length);
+
+            var voidGO = new GameObject("VoidKillZone");
+            voidGO.transform.SetParent(container.transform, false);
+            voidGO.transform.localPosition = new Vector3(gapStart + gapWidth * 0.5f, -15f, 0f);
+            voidGO.layer = LayerMask.NameToLayer("Hazard");
+            var voidCol = voidGO.AddComponent<BoxCollider2D>();
+            voidCol.size = new Vector2(gapWidth + 6f, 4f);
+            voidGO.AddComponent<HazardSpike>();
+        }
+        else
+        {
+            AddFloorSegment(0f, length);
+        }
+
+        var exitGO = new GameObject("RoomExit");
+        exitGO.transform.SetParent(container.transform, false);
+        exitGO.transform.localPosition = new Vector3(length - 1f, 1f, 0f);
+        var exitCol = exitGO.AddComponent<BoxCollider2D>();
+        exitCol.size = new Vector2(1.5f, 3f);
+        exitGO.AddComponent<RoomExit>();
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(length * 0.4f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 3;
+        data.difficultyTier = hasGap ? 6 : 5;
+        data.mechanic = hasGap ? PrimaryMechanic.TIMING : PrimaryMechanic.SOLO;
+        data.ecoCountRequired = 0;
+        data.hasAltSolution = true;
+        data.introRunMin = 21;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
+    }
+
+    private static void BuildSyncRoomZ3(RoomAssembler assembler, string roomId,
+        float xOffset, float leverX, float doorX, float exitX)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+        container.AddComponent<RoomVisualTheme>().backgroundColor = Z3BackgroundColor;
+
+        float floorWidth = exitX + 4f;
+        var floorGO = new GameObject("Floor");
+        floorGO.transform.SetParent(container.transform, false);
+        floorGO.transform.localPosition = new Vector3(floorWidth * 0.5f, 0f, 0f);
+        floorGO.layer = LayerMask.NameToLayer("Ground");
+        var floorSr = floorGO.AddComponent<SpriteRenderer>();
+        floorSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+        floorSr.sortingLayerName = "Terrain";
+        floorSr.drawMode = SpriteDrawMode.Tiled;
+        floorSr.size = new Vector2(floorWidth, 2f);
+        var floorCol = floorGO.AddComponent<BoxCollider2D>();
+        floorCol.size = new Vector2(floorWidth, 2f);
+
+        var leverGO = new GameObject("Lever");
+        leverGO.transform.SetParent(container.transform, false);
+        leverGO.transform.localPosition = new Vector3(leverX, 1.5f, 0f);
+        var leverSr = leverGO.AddComponent<SpriteRenderer>();
+        leverSr.sprite = _leverOffSprite;
+        leverSr.sortingLayerName = "Hazard";
+        leverGO.AddComponent<BoxCollider2D>();
+        var lever = leverGO.AddComponent<TriggerLever>();
+        SetPrivate(lever, "_spriteOff", _leverOffSprite);
+        SetPrivate(lever, "_spriteOn", _leverOnSprite);
+
+        var doorGO = new GameObject("Door");
+        doorGO.transform.SetParent(container.transform, false);
+        doorGO.transform.localPosition = new Vector3(doorX, 1.5f, 0f);
+        doorGO.layer = LayerMask.NameToLayer("Ground");
+        var doorSr = doorGO.AddComponent<SpriteRenderer>();
+        doorSr.sprite = _doorClosedSprite;
+        doorSr.sortingLayerName = "Hazard";
+        doorGO.transform.localScale = new Vector3(1f, 1.5f, 1f);
+        doorGO.AddComponent<BoxCollider2D>();
+        var door = doorGO.AddComponent<DoorGate>();
+        SetPrivate(door, "_spriteClosed", _doorClosedSprite);
+        SetPrivate(door, "_spriteOpen", _doorOpenSprite);
+        SetPrivate(lever, "_linkedDoor", door);
+
+        var exitGO = new GameObject("RoomExit");
+        exitGO.transform.SetParent(container.transform, false);
+        exitGO.transform.localPosition = new Vector3(exitX, 1f, 0f);
+        var exitCol = exitGO.AddComponent<BoxCollider2D>();
+        exitCol.size = new Vector2(1.5f, 3f);
+        var exit = exitGO.AddComponent<RoomExit>();
+        SetPrivate(exit, "_requiredDoor", door);
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(floorWidth * 0.4f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 3;
+        data.difficultyTier = 6;
+        data.mechanic = PrimaryMechanic.SYNC;
+        data.ecoCountRequired = 1;
+        data.hasAltSolution = false;
+        data.introRunMin = 21;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
+    }
+
+    // GDD §8.3 Boss Z2 "La Fractura" (Zona 2) — plataformas que colapsan sobre 3 pozos
+    // sucesivos. Los pisos A/B/C/D son estáticos desde el inicio (el jugador físicamente
+    // no puede llegar más allá de lo que su fase actual permite, colapsando la
+    // plataforma correspondiente) — solo palanca+plataforma+meta de cada fase se
+    // ocultan/revelan, igual que BossController (Z1) revela E4/E5. La dependencia real:
+    // L2 vive en el Piso B (al otro lado de CP1) y L3 en el Piso C (al otro lado de
+    // CP2) — un eco necesita haber cruzado la plataforma anterior (sostenida por OTRO
+    // eco) antes de poder sostener la siguiente.
+    private static void BuildBossRoomZ2(RoomAssembler assembler, string roomId, float xOffset)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+        container.AddComponent<RoomVisualTheme>().backgroundColor = Z2BackgroundColor;
+
+        void AddFloor(string label, float startX, float endX)
+        {
+            float w = endX - startX;
+            var go = new GameObject($"Floor_{label}");
+            go.transform.SetParent(container.transform, false);
+            go.transform.localPosition = new Vector3(startX + w * 0.5f, 0f, 0f);
+            go.layer = LayerMask.NameToLayer("Ground");
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+            sr.sortingLayerName = "Terrain";
+            sr.drawMode = SpriteDrawMode.Tiled;
+            sr.size = new Vector2(w, 2f);
+            var col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(w, 2f);
+        }
+
+        void AddVoidKillZone(float centerX, float width)
+        {
+            var voidGO = new GameObject($"VoidKillZone_{centerX:F0}");
+            voidGO.transform.SetParent(container.transform, false);
+            voidGO.transform.localPosition = new Vector3(centerX, -15f, 0f);
+            voidGO.layer = LayerMask.NameToLayer("Hazard");
+            var voidCol = voidGO.AddComponent<BoxCollider2D>();
+            voidCol.size = new Vector2(width + 6f, 4f);
+            voidGO.AddComponent<HazardSpike>();
+        }
+
+        (TriggerLever, CollapsingPlatform) BuildLeverAndPlatform(string label, float leverX, float platformStartX, float platformEndX)
+        {
+            var leverGO = new GameObject($"Lever_{label}");
+            leverGO.transform.SetParent(container.transform, false);
+            leverGO.transform.localPosition = new Vector3(leverX, 1.5f, 0f);
+            var leverSr = leverGO.AddComponent<SpriteRenderer>();
+            leverSr.sprite = _leverOffSprite;
+            leverSr.sortingLayerName = "Hazard";
+            leverGO.AddComponent<BoxCollider2D>();
+            var lever = leverGO.AddComponent<TriggerLever>();
+            SetPrivate(lever, "_spriteOff", _leverOffSprite);
+            SetPrivate(lever, "_spriteOn", _leverOnSprite);
+
+            float pw = platformEndX - platformStartX;
+            var platGO = new GameObject($"CollapsingPlatform_{label}");
+            platGO.transform.SetParent(container.transform, false);
+            platGO.transform.localPosition = new Vector3(platformStartX + pw * 0.5f, 0f, 0f);
+            platGO.layer = LayerMask.NameToLayer("Ground");
+            var platSr = platGO.AddComponent<SpriteRenderer>();
+            platSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+            platSr.sortingLayerName = "Terrain";
+            platSr.drawMode = SpriteDrawMode.Tiled;
+            platSr.size = new Vector2(pw, 2f);
+            platGO.AddComponent<BoxCollider2D>().size = new Vector2(pw, 2f);
+            var platform = platGO.AddComponent<CollapsingPlatform>();
+
+            SetPrivate(lever, "_linkedPlatform", platform);
+            AddVoidKillZone(platformStartX + pw * 0.5f, pw);
+            return (lever, platform);
+        }
+
+        BossCenterTrigger AddGoal(string label, float x)
+        {
+            var goalGO = new GameObject($"Goal_{label}");
+            goalGO.transform.SetParent(container.transform, false);
+            goalGO.transform.localPosition = new Vector3(x, 1f, 0f);
+            var col = goalGO.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(1f, 3f);
+            var sr = goalGO.AddComponent<SpriteRenderer>();
+            sr.sprite = _leverOnSprite;
+            sr.sortingLayerName = "Hazard";
+            sr.color = new Color(0.5f, 0.8f, 1f, 0.6f);
+            return goalGO.AddComponent<BossCenterTrigger>();
+        }
+
+        AddFloor("A", 0f, 6f);
+        AddFloor("B", 9f, 16f);
+        AddFloor("C", 19f, 26f);
+        AddFloor("D", 29f, 36f);
+
+        var (_, platform1) = BuildLeverAndPlatform("L1", leverX: 3f, platformStartX: 6f, platformEndX: 9f);
+        var goal1 = AddGoal("1", 10f);
+
+        var phase2Group = new GameObject("Phase2Group");
+        phase2Group.transform.SetParent(container.transform, false);
+        var (lever2, platform2) = BuildLeverAndPlatform("L2", leverX: 14f, platformStartX: 16f, platformEndX: 19f);
+        var goal2 = AddGoal("2", 20f);
+        lever2.transform.SetParent(phase2Group.transform, true);
+        platform2.transform.SetParent(phase2Group.transform, true);
+        goal2.transform.SetParent(phase2Group.transform, true);
+
+        var phase3Group = new GameObject("Phase3Group");
+        phase3Group.transform.SetParent(container.transform, false);
+        var (lever3, platform3) = BuildLeverAndPlatform("L3", leverX: 24f, platformStartX: 26f, platformEndX: 29f);
+        var goalFinal = AddGoal("Final", 30f);
+        lever3.transform.SetParent(phase3Group.transform, true);
+        platform3.transform.SetParent(phase3Group.transform, true);
+        goalFinal.transform.SetParent(phase3Group.transform, true);
+
+        var bossGO = new GameObject("BossControllerZ2");
+        bossGO.transform.SetParent(container.transform, false);
+        var boss = bossGO.AddComponent<BossControllerZ2>();
+        SetPrivate(boss, "_platform1", platform1);
+        SetPrivate(boss, "_platform2", platform2);
+        SetPrivate(boss, "_platform3", platform3);
+        SetPrivate(boss, "_phase2Reveal", phase2Group);
+        SetPrivate(boss, "_phase3Reveal", phase3Group);
+        SetPrivate(boss, "_goal1", goal1);
+        SetPrivate(boss, "_goal2", goal2);
+        SetPrivate(boss, "_goalFinal", goalFinal);
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(15f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 2;
+        data.difficultyTier = 8;
+        data.mechanic = PrimaryMechanic.DEPENDENCY;
+        data.ecoCountRequired = 3;
+        data.hasAltSolution = false;
+        data.introRunMin = 11;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterBossRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
+    }
+
+    // GDD §8.3 Boss Z3 "El Abismo" (Zona 3) — mismo esqueleto de sala que BuildBossRoomZ2
+    // (pisos A/B/C/D estáticos, solo palanca+obstáculo+meta se ocultan/revelan por
+    // fase) pero con DisintegratingFloor (ventana de 2s tras pulso) en vez de
+    // CollapsingPlatform (sostenida continua) — ver BossControllerZ3.
+    private static void BuildBossRoomZ3(RoomAssembler assembler, string roomId, float xOffset)
+    {
+        var container = new GameObject($"Room_{roomId}");
+        container.transform.position = new Vector3(xOffset, 0f, 0f);
+        container.AddComponent<RoomVisualTheme>().backgroundColor = Z3BackgroundColor;
+
+        void AddFloor(string label, float startX, float endX)
+        {
+            float w = endX - startX;
+            var go = new GameObject($"Floor_{label}");
+            go.transform.SetParent(container.transform, false);
+            go.transform.localPosition = new Vector3(startX + w * 0.5f, 0f, 0f);
+            go.layer = LayerMask.NameToLayer("Ground");
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+            sr.sortingLayerName = "Terrain";
+            sr.drawMode = SpriteDrawMode.Tiled;
+            sr.size = new Vector2(w, 2f);
+            var col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(w, 2f);
+        }
+
+        void AddVoidKillZone(float centerX, float width)
+        {
+            var voidGO = new GameObject($"VoidKillZone_{centerX:F0}");
+            voidGO.transform.SetParent(container.transform, false);
+            voidGO.transform.localPosition = new Vector3(centerX, -15f, 0f);
+            voidGO.layer = LayerMask.NameToLayer("Hazard");
+            var voidCol = voidGO.AddComponent<BoxCollider2D>();
+            voidCol.size = new Vector2(width + 6f, 4f);
+            voidGO.AddComponent<HazardSpike>();
+        }
+
+        TriggerLever BuildLeverAndFloor(string label, float leverX, float floorStartX, float floorEndX)
+        {
+            var leverGO = new GameObject($"Lever_{label}");
+            leverGO.transform.SetParent(container.transform, false);
+            leverGO.transform.localPosition = new Vector3(leverX, 1.5f, 0f);
+            var leverSr = leverGO.AddComponent<SpriteRenderer>();
+            leverSr.sprite = _leverOffSprite;
+            leverSr.sortingLayerName = "Hazard";
+            leverGO.AddComponent<BoxCollider2D>();
+            var lever = leverGO.AddComponent<TriggerLever>();
+            SetPrivate(lever, "_spriteOff", _leverOffSprite);
+            SetPrivate(lever, "_spriteOn", _leverOnSprite);
+
+            float fw = floorEndX - floorStartX;
+            var floorGO = new GameObject($"DisintegratingFloor_{label}");
+            floorGO.transform.SetParent(container.transform, false);
+            floorGO.transform.localPosition = new Vector3(floorStartX + fw * 0.5f, 0f, 0f);
+            floorGO.layer = LayerMask.NameToLayer("Ground");
+            var floorSr = floorGO.AddComponent<SpriteRenderer>();
+            floorSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/tile_ground.png");
+            floorSr.sortingLayerName = "Terrain";
+            floorSr.drawMode = SpriteDrawMode.Tiled;
+            floorSr.size = new Vector2(fw, 2f);
+            floorGO.AddComponent<BoxCollider2D>().size = new Vector2(fw, 2f);
+            var floor = floorGO.AddComponent<DisintegratingFloor>();
+
+            SetPrivate(lever, "_linkedFloor", floor);
+            AddVoidKillZone(floorStartX + fw * 0.5f, fw);
+            return lever;
+        }
+
+        BossCenterTrigger AddGoal(string label, float x)
+        {
+            var goalGO = new GameObject($"Goal_{label}");
+            goalGO.transform.SetParent(container.transform, false);
+            goalGO.transform.localPosition = new Vector3(x, 1f, 0f);
+            var col = goalGO.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(1f, 3f);
+            var sr = goalGO.AddComponent<SpriteRenderer>();
+            sr.sprite = _leverOnSprite;
+            sr.sortingLayerName = "Hazard";
+            sr.color = new Color(0.7f, 0.5f, 1f, 0.6f);
+            return goalGO.AddComponent<BossCenterTrigger>();
+        }
+
+        AddFloor("A", 0f, 6f);
+        AddFloor("B", 9f, 16f);
+        AddFloor("C", 19f, 26f);
+        AddFloor("D", 29f, 36f);
+
+        BuildLeverAndFloor("L1", leverX: 3f, floorStartX: 6f, floorEndX: 9f);
+        var goal1 = AddGoal("1", 10f);
+
+        var phase2Group = new GameObject("Phase2Group");
+        phase2Group.transform.SetParent(container.transform, false);
+        var lever2 = BuildLeverAndFloor("L2", leverX: 14f, floorStartX: 16f, floorEndX: 19f);
+        var goal2 = AddGoal("2", 20f);
+        lever2.transform.SetParent(phase2Group.transform, true);
+        goal2.transform.SetParent(phase2Group.transform, true);
+
+        var phase3Group = new GameObject("Phase3Group");
+        phase3Group.transform.SetParent(container.transform, false);
+        var lever3 = BuildLeverAndFloor("L3", leverX: 24f, floorStartX: 26f, floorEndX: 29f);
+        var goalFinal = AddGoal("Final", 30f);
+        lever3.transform.SetParent(phase3Group.transform, true);
+        goalFinal.transform.SetParent(phase3Group.transform, true);
+
+        var bossGO = new GameObject("BossControllerZ3");
+        bossGO.transform.SetParent(container.transform, false);
+        var boss = bossGO.AddComponent<BossControllerZ3>();
+        SetPrivate(boss, "_phase2Reveal", phase2Group);
+        SetPrivate(boss, "_phase3Reveal", phase3Group);
+        SetPrivate(boss, "_goal1", goal1);
+        SetPrivate(boss, "_goal2", goal2);
+        SetPrivate(boss, "_goalFinal", goalFinal);
+
+        var spawnPoint = new GameObject("SpawnPoint").transform;
+        spawnPoint.SetParent(container.transform, false);
+        spawnPoint.localPosition = new Vector3(1f, 2f, 0f);
+
+        var camAnchor = new GameObject("CameraAnchor").transform;
+        camAnchor.SetParent(container.transform, false);
+        camAnchor.localPosition = new Vector3(15f, 1.5f, 0f);
+
+        var data = ScriptableObject.CreateInstance<RoomData>();
+        data.roomId = roomId;
+        data.zoneId = 3;
+        data.difficultyTier = 9;
+        data.mechanic = PrimaryMechanic.TIMING;
+        data.ecoCountRequired = 3;
+        data.hasAltSolution = false;
+        data.introRunMin = 21;
+        AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");
+
+        assembler.RegisterBossRoom(new RoomInstance
+        {
+            data = data,
+            container = container,
+            spawnPoint = spawnPoint,
+            cameraAnchor = camAnchor,
+        });
+    }
+
+    // GDD §8.2 Boss 1 "El Espejo Fragmentado" (Zona 1), fases 1-3 completas:
+    // Fase 1 "Primeros Reflejos" — 3 paneles de espejo (E1/E2/E3), cada uno con su
+    // palanca — el jugador debe leer el oscilador de cada panel (8s [VS], mitad
+    // alineado/mitad no) y coordinar 2 ecos + su propio cuerpo para tener los 3 activos
+    // a la vez. Fase 2 "Multiplicación" — se revelan E4/E5; E4 tiene un contrapeso
+    // sobre E2 (MirrorCounterweightLink), hace falta un tercer cuerpo para volver a
+    // alinear E2. Fase 3 "La Convergencia" — con los 5 activos, pararse en el centro
+    // 1s continuo. La fase-machine vive en BossController; acá solo se arma la sala.
     private static void BuildBossRoom(RoomAssembler assembler, string roomId, float xOffset)
     {
         var container = new GameObject($"Room_{roomId}");
         container.transform.position = new Vector3(xOffset, 0f, 0f);
         container.AddComponent<RoomVisualTheme>().backgroundColor = new Color(0.10f, 0.06f, 0.03f);
 
-        const float e1X = 4f, e2X = 10f, centerX = 16f, e3X = 22f, floorWidth = 28f;
+        const float e1X = 4f, e2X = 10f, centerX = 16f, e3X = 22f, e4X = 28f, e5X = 34f, floorWidth = 40f;
 
         var floorGO = new GameObject("Floor");
         floorGO.transform.SetParent(container.transform, false);
@@ -891,8 +1617,7 @@ public static class VSSceneBuilder
         var floorCol = floorGO.AddComponent<BoxCollider2D>();
         floorCol.size = new Vector2(floorWidth, 2f);
 
-        var panels = new System.Collections.Generic.List<MirrorPanel>();
-        void BuildPanelLever(string label, float x)
+        MirrorPanel BuildPanelLever(string label, float x)
         {
             var leverGO = new GameObject($"Lever_{label}");
             leverGO.transform.SetParent(container.transform, false);
@@ -913,12 +1638,17 @@ public static class VSSceneBuilder
             panelSr.sortingLayerName = "Hazard";
             var panel = panelGO.AddComponent<MirrorPanel>();
             SetPrivate(panel, "_lever", lever);
-            panels.Add(panel);
+            return panel;
         }
 
-        BuildPanelLever("E1", e1X);
-        BuildPanelLever("E2", e2X);
-        BuildPanelLever("E3", e3X);
+        var phase1Panels = new[] { BuildPanelLever("E1", e1X), BuildPanelLever("E2", e2X), BuildPanelLever("E3", e3X) };
+        var phase2Panels = new[] { BuildPanelLever("E4", e4X), BuildPanelLever("E5", e5X) };
+
+        var counterweightGO = new GameObject("MirrorCounterweightLink_E4toE2");
+        counterweightGO.transform.SetParent(container.transform, false);
+        var counterweight = counterweightGO.AddComponent<MirrorCounterweightLink>();
+        SetPrivate(counterweight, "_triggerPanel", phase2Panels[0]); // E4
+        SetPrivate(counterweight, "_affectedPanel", phase1Panels[1]); // E2
 
         var centerGO = new GameObject("CenterTrigger");
         centerGO.transform.SetParent(container.transform, false);
@@ -934,7 +1664,8 @@ public static class VSSceneBuilder
         var bossGO = new GameObject("BossController");
         bossGO.transform.SetParent(container.transform, false);
         var boss = bossGO.AddComponent<BossController>();
-        SetPrivateField(boss, "_panels", panels.ToArray());
+        SetPrivateField(boss, "_phase1Panels", phase1Panels);
+        SetPrivateField(boss, "_phase2Panels", phase2Panels);
         SetPrivate(boss, "_centerTrigger", centerTrigger);
 
         var spawnPoint = new GameObject("SpawnPoint").transform;
@@ -950,7 +1681,7 @@ public static class VSSceneBuilder
         data.zoneId = 1;
         data.difficultyTier = 8;
         data.mechanic = PrimaryMechanic.SYNC;
-        data.ecoCountRequired = 2;
+        data.ecoCountRequired = 3;
         data.hasAltSolution = false;
         data.introRunMin = 1;
         AssetDatabase.CreateAsset(data, $"Assets/Rooms/{roomId}.asset");

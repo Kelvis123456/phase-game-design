@@ -8,9 +8,12 @@ using UnityEngine;
 public class TriggerLever : MonoBehaviour
 {
     [SerializeField] private DoorGate _linkedDoor;
+    [SerializeField] private CollapsingPlatform _linkedPlatform; // GDD §8.3 Boss 2 "La Fractura"
+    [SerializeField] private DisintegratingFloor _linkedFloor; // GDD §8.3 Boss 3 "El Abismo"
     [SerializeField] private SpriteRenderer _sprite;
     [SerializeField] private Sprite _spriteOff;
     [SerializeField] private Sprite _spriteOn;
+    [SerializeField] private AudioClip _toggleSfx;
 
     // GDD §7.3 R05 "Trigger Anticipado": zona de detección extra, solo para ecos, que
     // activa la palanca ~0.3s antes de que el eco la toque de verdad — un margen de
@@ -82,7 +85,10 @@ public class TriggerLever : MonoBehaviour
             var next = active ? _spriteOn : _spriteOff;
             if (next != null) _sprite.sprite = next;
         }
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlaySfx(_toggleSfx);
         if (_linkedDoor) _linkedDoor.SetHeld(this, active);
+        if (_linkedPlatform) _linkedPlatform.SetHeld(this, active);
+        if (_linkedFloor) _linkedFloor.SetHeld(this, active);
     }
 
     // R10 Revelación: RoomAssembler.LoadNext llama esto en cada palanca de la sala

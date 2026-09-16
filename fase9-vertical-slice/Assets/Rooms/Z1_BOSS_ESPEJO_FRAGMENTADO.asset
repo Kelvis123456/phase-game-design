@@ -16,7 +16,7 @@ MonoBehaviour:
   zoneId: 1
   difficultyTier: 8
   mechanic: 0
-  ecoCountRequired: 2
+  ecoCountRequired: 3
   estimatedDurationS: 0
   hasAltSolution: 0
   introRunMin: 1

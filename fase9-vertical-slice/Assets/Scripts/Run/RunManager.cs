@@ -17,6 +17,7 @@ public class RunManager : MonoBehaviour
     private int _roomsCleared;
     private int _echosCreated;
     private bool _isTutorialRun;
+    private int _currentZoneId = 1;
     private SaveSystem _save;
     private ProgressionSystem _progression;
 
@@ -99,11 +100,25 @@ public class RunManager : MonoBehaviour
         // vez del pool aleatorio, sin texto, la lección viene del diseño de nivel.
         _isTutorialRun = !_save.Current.metaProgression.tutorialCompleted;
 
+        _currentZoneId = _isTutorialRun ? 1 : CurrentZoneId();
+
         if (Services.TryGet<RoomAssembler>(out var assembler))
         {
             if (_isTutorialRun) assembler.AssembleTutorialRun();
-            else assembler.AssembleRun(roomCount: 4, seed: UnityEngine.Random.Range(100000, 999999));
+            else assembler.AssembleRun(roomCount: 4, seed: UnityEngine.Random.Range(100000, 999999), zoneId: _currentZoneId);
         }
+    }
+
+    // GDD §6.2 "Regla de Escalado por Zona": la zona activa depende de runs completadas
+    // en total, no de una elección del jugador — Z1 runs 1-10, Z2 runs 11-20, Z3 runs
+    // 21-30. Z4/Z5 existen en el GDD pero quedan fuera del alcance v1.0 (desarrollo-
+    // completo.md §4.3), así que cualquier progreso más allá de la run 20 se queda en Z3.
+    private int CurrentZoneId()
+    {
+        int completed = _save.Current.metaProgression.totalRunsCompleted;
+        if (completed < 10) return 1;
+        if (completed < 20) return 2;
+        return 3;
     }
 
     public void RoomCleared()
@@ -145,7 +160,13 @@ public class RunManager : MonoBehaviour
 
         if (_progression != null)
         {
-            _progression.EarnCrystals(ProgressionSystem.EarnSource.RunZone1);
+            var earnSource = _currentZoneId switch
+            {
+                1 => ProgressionSystem.EarnSource.RunZone1,
+                2 => ProgressionSystem.EarnSource.RunZone2,
+                _ => ProgressionSystem.EarnSource.RunZone3,
+            };
+            _progression.EarnCrystals(earnSource);
             if (ActiveUpgrades.pcBonusOnComplete > 0)
                 _progression.EarnFlat(ActiveUpgrades.pcBonusOnComplete);
         }
