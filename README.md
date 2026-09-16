@@ -21,7 +21,7 @@ Este repositorio es un **documento de pre-producción completo**, no un juego te
 | 7 — Selección de tecnología | Unity 2022 LTS, FMOD, stack completo | ✅ |
 | 8 — Arquitectura técnica | Patrones, sistemas, 16 secciones de diseño | ✅ |
 | 9 — Vertical Slice | Plan + **proyecto Unity real, jugable y verificado** | ✅ |
-| 10 — Desarrollo completo | 5 milestones de producción — ecos a 5 slots, 50 salas en 3 zonas, 3 bosses, meta-progresión, monetización | M1-M4 ✅, M5 (monetización) pendiente |
+| 10 — Desarrollo completo | 5 milestones de producción — ecos a 5 slots, 50 salas en 3 zonas, 3 bosses, meta-progresión, monetización | M1-M4 ✅, M5 parcial (sin anuncios + skins Premium ✅, Season Pass/nube/builds móviles pendiente) |
 | 11 — QA y Lanzamiento | QA interno, beta, store listings, live monitoring, roadmap post-lanzamiento | Documento de plan ✅, ejecución real pendiente |
 
 ## Prototipo técnico real
@@ -36,10 +36,11 @@ Este repositorio es un **documento de pre-producción completo**, no un juego te
 - **Meta-progresión**: árbol de 29 nodos reales (las 4 ramas del GDD), los 12 upgrades de run (R01-R12) con efecto real conectado, cinemática real del "Tercer Espejo" al comprar el 3er slot de eco.
 - **Audio real**: música por zona + SFX (`AudioManager`), todo con licencia libre (créditos en `Assets/Audio/CREDITS.md`).
 - **Logros**: arquitectura real (no la lista de 30+ del GDD, que el propio documento difiere a datos de jugadores reales) con 7 logros iniciales verificables, pantalla accesible desde el menú principal.
-- **UI real**: menú principal, árbol de progresión, selector de upgrades, pantalla de logros — todo construido en runtime (uGUI), no mockups.
+- **Monetización real (parcial)**: modo sin anuncios ($3.99) y las 4 skins Premium (C4/C7/C8/C10, GDD §9.2 vías 1 y 2) comprables vía `MonetizationSystem` sobre un `IPurchaseProvider` stub — conectar Unity IAP real necesita una cuenta de consola de tienda que no existe en este entorno. `SkinCatalog` traduce las 10 skins de la Rama C a tinte/opacidad/luz/ciclo de color, equipables por slot desde "Mis Ecos" (`EchoShopUI`).
+- **UI real**: menú principal, árbol de progresión, selector de upgrades, pantalla de logros, tienda "Mis Ecos" — todo construido en runtime (uGUI), no mockups.
 - `Assets/Editor/VSSceneBuilder.cs` — construye TODO el proyecto desde cero por código (escena, salas, wiring de cada sistema), reproducible con `-executeMethod VSSceneBuilder.BuildAll`.
 
-**Lo que falta de forma honesta** (no reclamado como hecho): monetización (tienda, IAP, season pass — GDD §9, Fase 10 M5), localización, accesibilidad conectada a gameplay, builds móviles reales (el standalone se verifica en Windows), y QA/lanzamiento real — ver `fase10-desarrollo/` y `fase11-qa-lanzamiento/` para el plan completo de esa parte. La verificación de cada sistema es de compilación + reconstrucción de escena/build en batch mode; falta un pase manual jugando la build real para confirmar el timing y la sensación de cada mecánica.
+**Lo que falta de forma honesta** (no reclamado como hecho): Season Pass (GDD §9.2 vía 3), backend de nube real, GDPR/accesibilidad de lanzamiento, builds móviles reales (el standalone se verifica en Windows), y QA/lanzamiento real — todo requiere cuentas de plataforma o testers humanos que no existen en este entorno; ver `fase10-desarrollo/` y `fase11-qa-lanzamiento/` para el plan completo. La verificación de cada sistema es de compilación + reconstrucción de escena/build en batch mode; falta un pase manual jugando la build real para confirmar el timing y la sensación de cada mecánica.
 
 Abrir con Unity Hub (versión 6000.4.10f1) apuntando a `fase9-vertical-slice/`, o regenerar la escena y el build desde cero vía Unity en batchmode.
 
