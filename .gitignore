@@ -16,5 +16,6 @@ Builds/
 Logs/
 UserSettings/
 .vs/
+.utmp/
 *.csproj
 *.sln
