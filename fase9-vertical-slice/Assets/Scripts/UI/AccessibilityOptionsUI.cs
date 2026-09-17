@@ -21,12 +21,21 @@ public class AccessibilityOptionsUI : MonoBehaviour
 
     private Canvas _canvas;
     private SaveSystem _save;
+    private DataPrivacySystem _privacy;
     private Text _modeLabel;
     private Text _echoSpeedLabel;
     private Text _chargeTimeLabel;
     private Text _modeTitleLabel;
     private Text _echoSpeedTitleLabel;
     private Text _chargeTimeTitleLabel;
+    private Text _privacyStatusLabel;
+    private Text _deleteButtonLabel;
+
+    // GDD §15.4: "Eliminar mi cuenta" es destructivo (borra el save local completo) — pide
+    // una segunda confirmación en vez de ejecutar directo al primer click/tecla.
+    private bool _deleteConfirmArmed;
+    private float _deleteConfirmTimer;
+    private const float DeleteConfirmWindow = 3f;
 
     private static readonly Color SelectedColor = new Color(1f, 0.95f, 0.6f, 1f);
     private static readonly Color UnselectedColor = new Color(0.6f, 0.6f, 0.6f, 1f);
@@ -34,6 +43,7 @@ public class AccessibilityOptionsUI : MonoBehaviour
     private void Start()
     {
         _save = Services.Get<SaveSystem>();
+        _privacy = Services.Get<DataPrivacySystem>();
         BuildUI();
         SetVisible(false);
     }
@@ -53,6 +63,12 @@ public class AccessibilityOptionsUI : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.DownArrow)) _selectedRow = (_selectedRow + 1) % RowCount;
         if (Input.GetKeyDown(KeyCode.LeftArrow)) AdjustRow(_selectedRow, -1);
         if (Input.GetKeyDown(KeyCode.RightArrow)) AdjustRow(_selectedRow, 1);
+
+        if (_deleteConfirmArmed)
+        {
+            _deleteConfirmTimer -= Time.unscaledDeltaTime;
+            if (_deleteConfirmTimer <= 0f) DisarmDeleteConfirm();
+        }
 
         // El estado también se puede cambiar desde fuera de esta pantalla (ej. los
         // hotkeys de debug) — refrescar cada frame que está visible es barato y evita
@@ -216,6 +232,50 @@ public class AccessibilityOptionsUI : MonoBehaviour
         chargeLabelRt.offsetMax = new Vector2(-52f, 0f);
         AddButton(chargeRowGO.transform, "NextButton", ">", new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(44f, 44f), () => AdjustChargeTime(1));
 
+        // GDD §15.4 — los 2 derechos GDPR que no dependen de un backend de nube que no
+        // existe todavía: exportar datos (JSON real al Escritorio) y borrar cuenta (save
+        // local, con confirmación en 2 pasos por ser destructivo).
+        AddSectionLabel(canvasGO.transform, "PrivacySection", "Privacidad (GDD §15.4)", -420f);
+
+        var privacyRowGO = new GameObject("PrivacyRow");
+        privacyRowGO.transform.SetParent(canvasGO.transform, false);
+        var privacyRowRt = privacyRowGO.AddComponent<RectTransform>();
+        privacyRowRt.anchorMin = new Vector2(0.5f, 1f);
+        privacyRowRt.anchorMax = new Vector2(0.5f, 1f);
+        privacyRowRt.pivot = new Vector2(0.5f, 1f);
+        privacyRowRt.sizeDelta = new Vector2(480f, 36f);
+        privacyRowRt.anchoredPosition = new Vector2(0f, -448f);
+
+        AddButton(privacyRowGO.transform, "ExportButton", "Exportar mis datos", new Vector2(0f, 0f), new Vector2(0.48f, 1f), new Vector2(0.5f, 0.5f), Vector2.zero, OnExportData);
+
+        var deleteGO = new GameObject("DeleteButton");
+        deleteGO.transform.SetParent(privacyRowGO.transform, false);
+        var deleteImg = deleteGO.AddComponent<Image>();
+        deleteImg.color = new Color(0.5f, 0.15f, 0.15f, 0.9f);
+        var deleteBtn = deleteGO.AddComponent<Button>();
+        deleteBtn.onClick.AddListener(OnDeleteAccountClicked);
+        var deleteRt = deleteGO.GetComponent<RectTransform>();
+        deleteRt.anchorMin = new Vector2(0.52f, 0f);
+        deleteRt.anchorMax = new Vector2(1f, 1f);
+        deleteRt.offsetMin = Vector2.zero;
+        deleteRt.offsetMax = Vector2.zero;
+        var deleteLabelGO = new GameObject("Label");
+        deleteLabelGO.transform.SetParent(deleteGO.transform, false);
+        _deleteButtonLabel = deleteLabelGO.AddComponent<Text>();
+        _deleteButtonLabel.text = "Eliminar mi cuenta";
+        _deleteButtonLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        _deleteButtonLabel.fontSize = 14;
+        _deleteButtonLabel.alignment = TextAnchor.MiddleCenter;
+        _deleteButtonLabel.color = Color.white;
+        var deleteLabelRt = deleteLabelGO.GetComponent<RectTransform>();
+        deleteLabelRt.anchorMin = Vector2.zero;
+        deleteLabelRt.anchorMax = Vector2.one;
+        deleteLabelRt.offsetMin = Vector2.zero;
+        deleteLabelRt.offsetMax = Vector2.zero;
+
+        _privacyStatusLabel = AddSectionLabel(canvasGO.transform, "PrivacyStatus", "", -488f);
+        _privacyStatusLabel.color = new Color(0.5f, 0.9f, 1f, 1f);
+
         AddLabel(canvasGO.transform, "Hint", "O para cerrar — ↑↓ elige ajuste, ←→ o < > lo cambia", 14, new Vector2(0f, 20f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(460f, 24f));
     }
 
@@ -335,5 +395,38 @@ public class AccessibilityOptionsUI : MonoBehaviour
         _modeTitleLabel.color = _selectedRow == 0 ? SelectedColor : UnselectedColor;
         _echoSpeedTitleLabel.color = _selectedRow == 1 ? SelectedColor : UnselectedColor;
         _chargeTimeTitleLabel.color = _selectedRow == 2 ? SelectedColor : UnselectedColor;
+
+        _deleteButtonLabel.text = _deleteConfirmArmed ? $"¿Seguro? ({_deleteConfirmTimer:F0}s)" : "Eliminar mi cuenta";
+    }
+
+    private void OnExportData()
+    {
+        if (Services.TryGet<AudioManager>(out var audio)) audio.PlayUiConfirm();
+        string path = _privacy.ExportData();
+        _privacyStatusLabel.text = $"Exportado: {path}";
+    }
+
+    // GDD §15.4 "Eliminar mi cuenta" — destructivo, exige un segundo click/tecla dentro de
+    // DeleteConfirmWindow segundos. El primer click solo arma la confirmación, no borra nada.
+    private void OnDeleteAccountClicked()
+    {
+        if (!_deleteConfirmArmed)
+        {
+            _deleteConfirmArmed = true;
+            _deleteConfirmTimer = DeleteConfirmWindow;
+            if (Services.TryGet<AudioManager>(out var audio)) audio.PlayUiCancel();
+            return;
+        }
+
+        _privacy.DeleteAccount();
+        DisarmDeleteConfirm();
+        _privacyStatusLabel.text = "Cuenta eliminada — datos locales borrados";
+        if (Services.TryGet<AudioManager>(out var audio2)) audio2.PlayUiConfirm();
+    }
+
+    private void DisarmDeleteConfirm()
+    {
+        _deleteConfirmArmed = false;
+        _deleteConfirmTimer = 0f;
     }
 }
