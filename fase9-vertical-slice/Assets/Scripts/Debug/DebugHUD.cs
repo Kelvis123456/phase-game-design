@@ -91,6 +91,14 @@ public class DebugHUD : MonoBehaviour
         {
             monJ.PurchaseSeasonPass(ok => _lastAction = $"J: PurchaseSeasonPass() -> {ok}");
         }
+        if (Services.TryGet<SaveSystem>(out var saveUI))
+        {
+            var prefs = saveUI.Current.accessibilityPrefs;
+            if (Input.GetKeyDown(KeyCode.U)) { prefs.btEchoSpeed = Mathf.Clamp(prefs.btEchoSpeed - 0.1f, 0.5f, 1f); saveUI.Save(); _lastAction = $"U: btEchoSpeed -> {prefs.btEchoSpeed:F1}"; }
+            if (Input.GetKeyDown(KeyCode.I)) { prefs.btEchoSpeed = Mathf.Clamp(prefs.btEchoSpeed + 0.1f, 0.5f, 1f); saveUI.Save(); _lastAction = $"I: btEchoSpeed -> {prefs.btEchoSpeed:F1}"; }
+            if (Input.GetKeyDown(KeyCode.Comma)) { prefs.btChargeTime = Mathf.Clamp(prefs.btChargeTime - 0.05f, 0.1f, 0.5f); saveUI.Save(); _lastAction = $",: btChargeTime -> {prefs.btChargeTime:F2}"; }
+            if (Input.GetKeyDown(KeyCode.Period)) { prefs.btChargeTime = Mathf.Clamp(prefs.btChargeTime + 0.05f, 0.1f, 0.5f); saveUI.Save(); _lastAction = $".: btChargeTime -> {prefs.btChargeTime:F2}"; }
+        }
     }
 
     // Ayuda de QA: aplicar un upgrade específico por id sin pasar por el sorteo 2-de-N
@@ -148,7 +156,9 @@ public class DebugHUD : MonoBehaviour
             ? $"adsRemoved={progMon.IsNodeUnlocked("D2")} skins=[{progMon.GetEquippedSkin(0)},{progMon.GetEquippedSkin(1)},{progMon.GetEquippedSkin(2)},{progMon.GetEquippedSkin(3)},{progMon.GetEquippedSkin(4)}] owned=[C4:{progMon.IsNodeUnlocked("C4")} C7:{progMon.IsNodeUnlocked("C7")} C8:{progMon.IsNodeUnlocked("C8")} C10:{progMon.IsNodeUnlocked("C10")}]"
             : "NULL";
 
-        string colorblindText = Services.TryGet<SaveSystem>(out var saveA11y) ? saveA11y.Current.accessibilityPrefs.colorblindMode : "NULL";
+        string colorblindText = Services.TryGet<SaveSystem>(out var saveA11y)
+            ? $"{saveA11y.Current.accessibilityPrefs.colorblindMode} echoSpeed={saveA11y.Current.accessibilityPrefs.btEchoSpeed:F1} chargeTime={saveA11y.Current.accessibilityPrefs.btChargeTime:F2}"
+            : "NULL";
         string seasonPassText = Services.TryGet<SeasonPassSystem>(out var sp) ? $"active={sp.IsActive} expires={sp.ExpiresAtUtc}" : "NULL";
 
         GUI.Box(new Rect(5, 5, 900, 492), "");

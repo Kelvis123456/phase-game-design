@@ -22,6 +22,7 @@ public class TimeManager : MonoBehaviour
 
     private float[] _scales = { 1f, 1f, 1f, 1f }; // World, Player, Echo, UI
     private float _playerTarget = 1f;
+    private float _echoTarget = 1f;
 
     // Run upgrades (RunUpgradeEffects) — reseteados por RunManager en cada StartRun.
     private float _deactivateSmoothBonus = 0f; // R03 Bullet Extendido: más lento = más suave
@@ -49,6 +50,12 @@ public class TimeManager : MonoBehaviour
         float speed = deactivating ? Mathf.Max(1f, _smoothSpeed - _deactivateSmoothBonus) : _smoothSpeed;
         _scales[(int)Layer.Player] = Mathf.Lerp(_scales[(int)Layer.Player], _playerTarget, speed * dt);
 
+        // GDD §14.3 — accesibilidad: "Velocidad de ecos en bullet-time" (slider 1.0x-0.5x).
+        // Por defecto (1.0) los ecos siguen sin verse afectados por bullet-time, igual que
+        // siempre — esto es estrictamente opcional, nunca cambia el comportamiento base.
+        _echoTarget = _playerTarget < 1f ? EchoBulletTimeSpeedPref : 1f;
+        _scales[(int)Layer.Echo] = Mathf.Lerp(_scales[(int)Layer.Echo], _echoTarget, speed * dt);
+
         UpdatePostProcessing();
 
         if (Services.TryGet<AudioManager>(out var audio))
@@ -70,6 +77,9 @@ public class TimeManager : MonoBehaviour
     {
         _playerTarget = active ? _bulletTimeScale : 1f;
     }
+
+    private static float EchoBulletTimeSpeedPref =>
+        Services.TryGet<SaveSystem>(out var save) ? Mathf.Clamp(save.Current.accessibilityPrefs.btEchoSpeed, 0.5f, 1f) : 1f;
 
     // R03 Bullet Extendido.
     public void SetDeactivateSmoothBonus(float bonus) => _deactivateSmoothBonus = bonus;
