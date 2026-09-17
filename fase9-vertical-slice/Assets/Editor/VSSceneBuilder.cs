@@ -1894,6 +1894,49 @@ public static class VSSceneBuilder
         }
     }
 
+    // Fase 10 M5.7 — primer intento real de build móvil. NO es el build de release que
+    // pide el GDD (keystore de producción, IL2CPP+ARM64 — acá se deja el scripting
+    // backend/arquitectura que ya tenga configurado el proyecto, sea cual sea, para no
+    // pelear con APIs de PlayerSettings que cambian de versión a versión de Unity)."
+    // El objetivo de este método es solo demostrar que el pipeline Android compila y
+    // empaqueta un APK real desde este mismo proyecto, no producir el artefacto firmado
+    // de Google Play.
+    public static void BuildAndroidApk()
+    {
+        Debug.Log("[VSSceneBuilder] Building Android APK...");
+
+        // productName/companyName ya se fijan en BuildPlayerExe (son globales, no por
+        // plataforma) — acá solo el identifier de Android específicamente. La API vieja
+        // (PlayerSettings.applicationIdentifier = ...) aplica al build target GROUP
+        // ACTIVO en ese momento, no a Android — si se llama antes de cambiar de
+        // plataforma, pisa el de Standalone/Windows por error, no el de Android.
+        PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.kelvisstudio.phasevs");
+
+        if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
+        {
+            bool switched = EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android);
+            Debug.Log("[VSSceneBuilder] SwitchActiveBuildTarget(Android) -> " + switched);
+        }
+
+        Directory.CreateDirectory("Build");
+
+        var options = new BuildPlayerOptions
+        {
+            scenes = new[] { ScenePath },
+            locationPathName = "Build/PhaseVS.apk",
+            target = BuildTarget.Android,
+            options = BuildOptions.None
+        };
+
+        var report = BuildPipeline.BuildPlayer(options);
+        Debug.Log("[VSSceneBuilder] Android build result: " + report.summary.result + " | Errors: " + report.summary.totalErrors + " | Size: " + report.summary.totalSize);
+
+        if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+        {
+            Debug.LogError("[VSSceneBuilder] ANDROID BUILD FAILED");
+        }
+    }
+
     // Fase 10: arte pixel real (Assets/ArtSource/, hecho a mano pixel por pixel siguiendo
     // la paleta de la Fase 6 — jugador #D8E4F0, sombra #8AA0BC, acento #4FFFCE, peligro
     // #8B2030) en vez de los rectángulos de color placeholder de CreateSolidSprite.
