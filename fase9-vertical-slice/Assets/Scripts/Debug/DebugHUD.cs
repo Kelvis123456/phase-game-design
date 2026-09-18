@@ -91,6 +91,11 @@ public class DebugHUD : MonoBehaviour
         {
             monJ.PurchaseSeasonPass(ok => _lastAction = $"J: PurchaseSeasonPass() -> {ok}");
         }
+        if (Input.GetKeyDown(KeyCode.E) && Services.TryGet<DataPrivacySystem>(out var privacyE))
+        {
+            string path = privacyE.ExportData();
+            _lastAction = $"E: ExportData() -> {path}";
+        }
         if (Services.TryGet<SaveSystem>(out var saveUI))
         {
             var prefs = saveUI.Current.accessibilityPrefs;

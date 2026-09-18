@@ -339,6 +339,9 @@ public static class VSSceneBuilder
 
         // Fase 10 M5.1/M5.2 (GDD §9.2): monetización real (flujo de compra + persistencia)
         // con un provider de tienda stub — ver IPurchaseProvider para por qué.
+        var privacyGO = new GameObject("DataPrivacySystem");
+        privacyGO.AddComponent<DataPrivacySystem>();
+
         var seasonPassGO = new GameObject("SeasonPassSystem");
         seasonPassGO.AddComponent<SeasonPassSystem>();
 
