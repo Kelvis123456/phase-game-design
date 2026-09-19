@@ -27,6 +27,11 @@ public class RunManager : MonoBehaviour
     // para R05, EchoPlayer.TrailRenderer para R06, RevealTriggers de RoomAssembler para
     // R10) — ya existen, así que entran a la tabla.
     public RunUpgradeEffects ActiveUpgrades { get; private set; } = new RunUpgradeEffects();
+
+    // GDD §4.1 Rama B — modificador permanente elegido para la run completa (ver
+    // BranchBModifier.cs). Antes de este pase, Rama B no tenía NINGÚN efecto de gameplay
+    // conectado (solo costaba PC y se guardaba como "desbloqueado" sin hacer nada).
+    public BranchBEffects ActiveBranchB { get; private set; } = new BranchBEffects();
     public static readonly System.Collections.Generic.List<RunUpgrade> UpgradeTable = new System.Collections.Generic.List<RunUpgrade>
     {
         new RunUpgrade("R01", "Eco Veloz", "Los ecos de esta run corren al 1.2x — hace puzzles de timing más difíciles", e => e.echoSpeedMultiplier = 1.2f),
@@ -63,6 +68,17 @@ public class RunManager : MonoBehaviour
         }
     }
 
+    private void PushBranchBToSystems()
+    {
+        if (Services.TryGet<TimeManager>(out var time))
+        {
+            time.SetBranchBBulletTime(ActiveBranchB.doubleBulletTime, ActiveBranchB.bulletTimeDisabled);
+            time.SetBranchBFogOfWar(ActiveBranchB.fogOfWar);
+        }
+        if (Services.TryGet<RoomAssembler>(out var assembler))
+            assembler.SetMirrored(ActiveBranchB.mirrorRoom);
+    }
+
     // R08 Reinicio de Sala: VSRoomController llama esto al morir. Si hay un reinicio
     // disponible, se consume (una sola vez por run) y el llamador hace un reset suave
     // (conserva ecos/grabación) en vez del reset completo.
@@ -91,6 +107,12 @@ public class RunManager : MonoBehaviour
         _save.Save();
         ActiveUpgrades = new RunUpgradeEffects();
         PushUpgradesToSystems();
+
+        ActiveBranchB = new BranchBEffects();
+        string branchBId = _save.Current.metaProgression.selectedBranchBModifier;
+        if (BranchBTable.Apply.TryGetValue(branchBId, out var applyBranchB)) applyBranchB(ActiveBranchB);
+        PushBranchBToSystems();
+
         if (Services.TryGet<EchoManager>(out var echoManager))
             echoManager.ResetForNewRun();
         TransitionTo(RunState.RoomTransition);
@@ -105,7 +127,13 @@ public class RunManager : MonoBehaviour
         if (Services.TryGet<RoomAssembler>(out var assembler))
         {
             if (_isTutorialRun) assembler.AssembleTutorialRun();
-            else assembler.AssembleRun(roomCount: 4, seed: UnityEngine.Random.Range(100000, 999999), zoneId: _currentZoneId);
+            else
+            {
+                // B8 Sala Única: 2 salas en vez de 4 (el boss se agrega aparte siempre,
+                // ver RoomAssembler.AssembleRun — "más corta, recompensa normal").
+                int roomCount = ActiveBranchB.roomCountOverride > 0 ? ActiveBranchB.roomCountOverride : 4;
+                assembler.AssembleRun(roomCount: roomCount, seed: UnityEngine.Random.Range(100000, 999999), zoneId: _currentZoneId);
+            }
         }
     }
 
@@ -166,7 +194,11 @@ public class RunManager : MonoBehaviour
                 2 => ProgressionSystem.EarnSource.RunZone2,
                 _ => ProgressionSystem.EarnSource.RunZone3,
             };
-            _progression.EarnCrystals(earnSource);
+            // B6 Sin Bullet (GDD: "+50% PC al completar SALA") — el VS no tiene un premio
+            // de PC por sala individual, solo por run completa, así que el bonus se aplica
+            // acá, sobre el total de la run — simplificación honesta, no un premio fantasma.
+            int baseAmount = ProgressionSystem.AmountFor(earnSource);
+            _progression.EarnFlat(Mathf.RoundToInt(baseAmount * ActiveBranchB.pcBonusMultiplier));
             if (ActiveUpgrades.pcBonusOnComplete > 0)
                 _progression.EarnFlat(ActiveUpgrades.pcBonusOnComplete);
         }
