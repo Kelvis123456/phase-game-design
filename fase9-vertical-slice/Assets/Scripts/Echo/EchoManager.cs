@@ -80,7 +80,10 @@ public class EchoManager : MonoBehaviour
 
         bool isFirstEchoOfRun = !_hasDuplicatedFirstEchoThisRun && _activeCount == 0;
         Services.TryGet<RunManager>(out var run);
-        float speedMultiplier = run != null ? run.ActiveUpgrades.echoSpeedMultiplier : 1f;
+        // B3 Eco Acelerado (Rama B, GDD §4.1) se combina con R01/R02 (Rama de upgrades de
+        // run) en vez de pisarlo — son 2 sistemas de progresión independientes, ambos
+        // válidos en la misma run a la vez.
+        float speedMultiplier = run != null ? run.ActiveUpgrades.echoSpeedMultiplier * run.ActiveBranchB.echoSpeedMultiplier : 1f;
 
         var echo = RentFromPool();
         echo.Initialize(recording, ColorForSlot(_activeCount), _activeCount, speedMultiplier, SkinVisualForSlot(_activeCount));

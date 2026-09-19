@@ -37,6 +37,11 @@ public class SaveData
         // igual que lastSyncedAt/createdAt, para poder comparar contra DateTime.UtcNow sin
         // ambigüedad de zona horaria.
         public string seasonPassExpiresAtUtc = "";
+
+        // GDD §4.1 Rama B "Modificadores de Run" — cuál de los nodos B YA DESBLOQUEADOS
+        // está activo para la PRÓXIMA run. "B1" (Run Limpia, sin modificador) es el
+        // default gratuito, igual que "C1" para skins.
+        public string selectedBranchBModifier = "B1";
     }
 
     [Serializable]
