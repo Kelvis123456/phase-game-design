@@ -269,4 +269,16 @@ public class RoomAssembler : MonoBehaviour
     public float CurrentRoomOriginX => (_currentIndex >= 0 && _currentIndex < _runSequence.Count)
         ? _runSequence[_currentIndex].container.transform.position.x
         : 0f;
+
+    // GDD §4.1 Rama B, B2 "Modo Espejo" ("la sala se refleja horizontalmente"). El VS no
+    // reconstruye la geometría de cada sala reflejada — voltea la cámara ortográfica en X,
+    // que invierte todo lo que renderiza (mundo, sprites, ecos) sin tocar el layout real
+    // de cada sala. El Canvas de UI es ScreenSpaceOverlay (no hijo de esta cámara), así que
+    // el menú/HUD nunca se ve afectado.
+    public void SetMirrored(bool mirrored)
+    {
+        if (_camera == null) return;
+        var scale = _camera.transform.localScale;
+        _camera.transform.localScale = new Vector3(mirrored ? -Mathf.Abs(scale.x) : Mathf.Abs(scale.x), scale.y, scale.z);
+    }
 }

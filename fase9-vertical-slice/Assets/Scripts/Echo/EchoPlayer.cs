@@ -95,6 +95,7 @@ public class EchoPlayer : MonoBehaviour
     private void Update()
     {
         UpdateTrail();
+        UpdateBranchBVisibility();
 
         if (_recording == null || _recording.Length == 0) return;
 
@@ -116,6 +117,16 @@ public class EchoPlayer : MonoBehaviour
         if (_skinVisual == null || !_skinVisual.cyclesColorPerLoop) return;
         _rainbowCycleIndex = (_rainbowCycleIndex + 1) % SkinCatalog.RainbowCycleColors.Length;
         _mat.SetColor(ShaderColor, SkinCatalog.RainbowCycleColors[_rainbowCycleIndex]);
+    }
+
+    // B7 Eco Fantasma (Rama B, GDD §4.1): "los ecos son invisibles excepto en bullet-time".
+    // Solo el renderer se apaga — la simulación (posición, triggers) sigue corriendo igual,
+    // el eco real sigue activando palancas aunque no se vea, tal como pide el GDD.
+    private void UpdateBranchBVisibility()
+    {
+        if (_sprite == null) return;
+        bool ghostMode = Services.TryGet<RunManager>(out var run) && run.ActiveBranchB.echoesInvisibleOutsideBulletTime;
+        _sprite.enabled = !ghostMode || (_timeManager != null && _timeManager.IsBulletTimeActive);
     }
 
     private void UpdateTrail()

@@ -27,6 +27,12 @@ public class TimeManager : MonoBehaviour
     // Run upgrades (RunUpgradeEffects) — reseteados por RunManager en cada StartRun.
     private float _deactivateSmoothBonus = 0f; // R03 Bullet Extendido: más lento = más suave
 
+    // GDD §4.1 Rama B — reseteados por RunManager en cada StartRun (ver BranchBModifier.cs).
+    private float _worldBaseline = 1f;         // valor de fondo del Layer.World (R11 Mundo Lento)
+    private bool _branchBDoubleBulletTime;     // B5 Doble Bullet
+    private bool _branchBBulletTimeDisabled;   // B6 Sin Bullet
+    private bool _branchBFogOfWar;             // B4 Niebla de Sala
+
     private Vignette _vignette;
     private ChromaticAberration _chromatic;
 
@@ -66,8 +72,14 @@ public class TimeManager : MonoBehaviour
     {
         float t = 1f - _scales[(int)Layer.Player]; // 0 = normal, 1 = bullet-time completo
 
+        // B4 Niebla de Sala (GDD: "visibilidad reducida a radio de 3 tiles"): el VS no
+        // tiene un sistema de visibilidad por tile, así que se aproxima subiendo el piso
+        // del vignette incluso FUERA de bullet-time — más oscuro en los bordes de pantalla
+        // todo el tiempo, no solo al activar bullet-time.
+        float vignetteFloor = _branchBFogOfWar ? Mathf.Max(_vignetteNormal, 0.6f) : _vignetteNormal;
+
         if (_vignette != null)
-            _vignette.intensity.value = Mathf.Lerp(_vignetteNormal, _vignetteBulletTime, t);
+            _vignette.intensity.value = Mathf.Lerp(vignetteFloor, _vignetteBulletTime, t);
 
         if (_chromatic != null)
             _chromatic.intensity.value = Mathf.Lerp(_chromaticNormal, _chromaticBulletTime, t);
@@ -75,8 +87,26 @@ public class TimeManager : MonoBehaviour
 
     public void SetBulletTime(bool active)
     {
-        _playerTarget = active ? _bulletTimeScale : 1f;
+        // B6 Sin Bullet: bloquea la ACTIVACIÓN nada más — desactivar siempre pasa, por las
+        // dudas de que quedara encendido de una run anterior con otro modificador.
+        if (active && _branchBBulletTimeDisabled) return;
+
+        // B5 Doble Bullet (GDD: "el mundo baja a 0.1x, el jugador también a 0.05x" — más
+        // extremo que el bullet-time normal, que solo frena al jugador a 0.1x y deja el
+        // mundo/Layer.World como estaba).
+        _playerTarget = active
+            ? (_branchBDoubleBulletTime ? 0.05f : _bulletTimeScale)
+            : 1f;
+        _scales[(int)Layer.World] = active && _branchBDoubleBulletTime ? 0.1f : _worldBaseline;
     }
+
+    public void SetBranchBBulletTime(bool doubleIntensity, bool disabled)
+    {
+        _branchBDoubleBulletTime = doubleIntensity;
+        _branchBBulletTimeDisabled = disabled;
+    }
+
+    public void SetBranchBFogOfWar(bool active) => _branchBFogOfWar = active;
 
     private static float EchoBulletTimeSpeedPref =>
         Services.TryGet<SaveSystem>(out var save) ? Mathf.Clamp(save.Current.accessibilityPrefs.btEchoSpeed, 0.5f, 1f) : 1f;
@@ -86,7 +116,13 @@ public class TimeManager : MonoBehaviour
 
     // R11 Mundo Lento — Layer.World es lo que corre el LoopTimer, así que esto sí
     // "facilita el timing sin afectar ecos" (los ecos corren siempre en Layer.Echo).
-    public void SetWorldScale(float scale) => _scales[(int)Layer.World] = scale;
+    // Guarda el valor como BASELINE — B5 Doble Bullet lo pisa temporalmente mientras
+    // bullet-time está activo y vuelve a este valor (no a 1f a secas) al desactivarse.
+    public void SetWorldScale(float scale)
+    {
+        _worldBaseline = scale;
+        if (_playerTarget >= 1f) _scales[(int)Layer.World] = scale;
+    }
 
     public float Delta(Layer layer) => _scales[(int)layer] * Time.deltaTime;
     public float Scale(Layer layer) => _scales[(int)layer];

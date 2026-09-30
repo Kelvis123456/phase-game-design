@@ -103,6 +103,17 @@ public class DebugHUD : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.I)) { prefs.btEchoSpeed = Mathf.Clamp(prefs.btEchoSpeed + 0.1f, 0.5f, 1f); saveUI.Save(); _lastAction = $"I: btEchoSpeed -> {prefs.btEchoSpeed:F1}"; }
             if (Input.GetKeyDown(KeyCode.Comma)) { prefs.btChargeTime = Mathf.Clamp(prefs.btChargeTime - 0.05f, 0.1f, 0.5f); saveUI.Save(); _lastAction = $",: btChargeTime -> {prefs.btChargeTime:F2}"; }
             if (Input.GetKeyDown(KeyCode.Period)) { prefs.btChargeTime = Mathf.Clamp(prefs.btChargeTime + 0.05f, 0.1f, 0.5f); saveUI.Save(); _lastAction = $".: btChargeTime -> {prefs.btChargeTime:F2}"; }
+
+            // C: fuerza el siguiente modificador de Rama B en la lista B1-B8, sin pasar
+            // por el desbloqueo de PC — para poder probar cada uno de forma determinista.
+            if (Input.GetKeyDown(KeyCode.C))
+            {
+                string[] order = { "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8" };
+                int idx = (System.Array.IndexOf(order, saveUI.Current.metaProgression.selectedBranchBModifier) + 1) % order.Length;
+                saveUI.Current.metaProgression.selectedBranchBModifier = order[idx];
+                saveUI.Save();
+                _lastAction = $"C: selectedBranchBModifier -> {order[idx]}";
+            }
         }
     }
 
@@ -165,8 +176,11 @@ public class DebugHUD : MonoBehaviour
             ? $"{saveA11y.Current.accessibilityPrefs.colorblindMode} echoSpeed={saveA11y.Current.accessibilityPrefs.btEchoSpeed:F1} chargeTime={saveA11y.Current.accessibilityPrefs.btChargeTime:F2}"
             : "NULL";
         string seasonPassText = Services.TryGet<SeasonPassSystem>(out var sp) ? $"active={sp.IsActive} expires={sp.ExpiresAtUtc}" : "NULL";
+        string branchBText = Services.TryGet<RunManager>(out var runB)
+            ? $"selected={(Services.TryGet<SaveSystem>(out var saveB) ? saveB.Current.metaProgression.selectedBranchBModifier : "?")} mirror={runB.ActiveBranchB.mirrorRoom} echoSpeed={runB.ActiveBranchB.echoSpeedMultiplier:F1} fog={runB.ActiveBranchB.fogOfWar} doubleBT={runB.ActiveBranchB.doubleBulletTime} noBT={runB.ActiveBranchB.bulletTimeDisabled} pcMult={runB.ActiveBranchB.pcBonusMultiplier:F1} ghostEcho={runB.ActiveBranchB.echoesInvisibleOutsideBulletTime} roomCount={runB.ActiveBranchB.roomCountOverride}"
+            : "NULL";
 
-        GUI.Box(new Rect(5, 5, 900, 492), "");
+        GUI.Box(new Rect(5, 5, 900, 516), "");
         GUI.Label(new Rect(15, 10, 680, 24), $"frame={_frameCount} t={Time.time:F2} dt={Time.deltaTime:F4}", style);
         GUI.Label(new Rect(15, 34, 680, 24), $"player.pos={posText}", style);
         GUI.Label(new Rect(15, 58, 680, 24), $"rb.pos={rbText}", style);
@@ -184,5 +198,6 @@ public class DebugHUD : MonoBehaviour
         GUI.Label(new Rect(15, 414, 880, 24), $"Monetization: {monetizationText}", style);
         GUI.Label(new Rect(15, 438, 880, 24), $"Accessibility: colorblindMode={colorblindText}", style);
         GUI.Label(new Rect(15, 462, 880, 24), $"SeasonPass: {seasonPassText}", style);
+        GUI.Label(new Rect(15, 486, 880, 24), $"BranchB: {branchBText}", style);
     }
 }
