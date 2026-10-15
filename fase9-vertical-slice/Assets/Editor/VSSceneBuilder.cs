@@ -360,6 +360,12 @@ public static class VSSceneBuilder
         var mainMenu = mainMenuGO.AddComponent<MainMenuUI>();
         SetPrivate(mainMenu, "_background", keyartSprite);
 
+        // GDD §15.4: pantalla de consentimiento — se registra DESPUÉS de MainMenuUI para
+        // que su Canvas (sortingOrder 300) se dibuje encima del menú y lo bloquee mientras
+        // no se acepte, en el primer arranque.
+        var consentGO = new GameObject("ConsentScreenUI");
+        consentGO.AddComponent<ConsentScreenUI>();
+
         var cinematicGO = new GameObject("TercerEspejoCinematic");
         var cinematic = cinematicGO.AddComponent<TercerEspejoCinematic>();
         SetPrivate(cinematic, "_echoSprite", playerSprite);

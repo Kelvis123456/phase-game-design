@@ -11,6 +11,12 @@ public class SaveData
     public string createdAt;
     public string lastSyncedAt;
 
+    // GDD §15.4: "en primera instalación, antes de cualquier sync de nube, se presenta el
+    // resumen de datos recopilados". No hay sync de nube real todavía (M5.5 diferido) para
+    // que esto bloquee — se muestra en el primer arranque igual, es la pantalla real que
+    // pide el GDD, aunque hoy no gatee nada además de sí misma.
+    public bool dataConsentAccepted = false;
+
     public MetaProgression metaProgression = new MetaProgression();
     public Achievements achievements = new Achievements();
     public AccessibilityPrefs accessibilityPrefs = new AccessibilityPrefs();
